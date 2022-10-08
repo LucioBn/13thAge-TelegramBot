@@ -33,7 +33,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-NAME, RACE, CLASS, BIO = range(4)
+NAME, RACE, CLASS = range(3)
 
 
 def start(update: Update, context: CallbackContext) -> int:
