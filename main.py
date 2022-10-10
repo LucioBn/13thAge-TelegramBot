@@ -1,20 +1,14 @@
-#!/usr/bin/env python
-# pylint: disable=C0116,W0613
-# This program is dedicated to the public domain under the CC0 license.
-
 """
-First, a few callback functions are defined. Then, those functions are passed to
-the Dispatcher and registered at their respective places.
-Then, the bot is started and runs until we press Ctrl-C on the command line.
+The bot is started and runs until we press Ctrl-C on the command line.
 
 Usage:
-Example of a bot-user conversation using ConversationHandler.
 Send /start to initiate the conversation.
 Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
 
 import logging
+import random
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -33,7 +27,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-NAME, RACE, CLASS = range(3)
+NAME, RACE, CLASS, ROLL = range(4)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -65,10 +59,9 @@ def name(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     logger.info("Name of the PC: %s", update.message.text)
     update.message.reply_text(
-        'Okay!\n'
-        f'Choose a race for {update.message.text}.',
+        f'Choose the race.',
         reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Which race?'
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Choose the race.'
         )
     )
 
@@ -92,10 +85,9 @@ def race(update: Update, context: CallbackContext) -> int:
     
     logger.info("Race of the PC: %s", update.message.text)
     update.message.reply_text(
-        'Okay!\n'
-        f'Choose the class.',
+        'Choose the class.',
         reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Which class?'
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Choose the class.'
         )
     )
 
@@ -103,15 +95,102 @@ def race(update: Update, context: CallbackContext) -> int:
 
 
 def class_(update: Update, context: CallbackContext) -> int:
-    """Stores the class and asks for some info about the user."""
+    """Stores the class and """
+
+    reply_keyboard = [
+        ['Roll']
+    ]
 
     logger.info("Class of the PC: %s", update.message.text)
     update.message.reply_text(
-        'Okay.',
-        reply_markup=ReplyKeyboardRemove()
+        'To accumulate the points to buy the scores of each ability, '
+        'roll 4d6 for 6 times, then the low die in each roll will be dropped and '
+        'finally you will obtain your points.',
+        reply_markup=ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Roll 4d6 6 times.'
+        )
+    )
+
+    return ROLL
+
+
+def roll(update: Update, context: CallbackContext) -> int:
+    """Sends the results of 6 rolls of 4 dice."""
+
+    def roll_4d6_and_return_max(index) -> int:
+        if(index == 1):
+            pos = 'first'
+        elif(index == 2):
+            pos = 'second'
+        elif(index == 3):
+            pos = 'third'
+        elif(index == 4):
+            pos = 'fourth'
+        elif(index == 5):
+            pos = 'fifth'
+        elif(index == 6):
+            pos = 'sixth'
+        else:
+            update.message.reply_text(
+                'ERROR, send /start to restart the bot.'
+            )
+            return ConversationHandler.END
+
+        update.message.reply_text(
+            f'The results of the {pos} group are:'
+        )
+
+        min = random.randint(1,6)
+        update.message.reply_text(
+            f'First die -> {min}',
+        )
+
+        roll = random.randint(1,6)
+        update.message.reply_text(
+            f'Second die -> {roll}',
+        )
+        sum = 0
+        if(roll < min):
+            sum += min
+            min = roll
+        else:
+            sum += roll
+
+        roll = random.randint(1,6)
+        update.message.reply_text(
+            f'Third die -> {roll}',
+        )
+        if(roll < min):
+            sum += min
+            min = roll
+        else:
+            sum += roll
+
+        roll = random.randint(1,6)
+        update.message.reply_text(
+            f'Fourth die -> {roll}',
+        )
+        if(roll < min):
+            sum += min
+        else:
+            sum += roll
+
+        update.message.reply_text(
+            f'--------------',
+        )
+
+        return sum
+
+    global points_for_the_abilities
+    for index in range(6):
+        points_for_the_abilities += roll_4d6_and_return_max(index+1)
+
+    update.message.reply_text(
+        f'You have {points_for_the_abilities} points to spend.'
     )
 
     return ConversationHandler.END
+
 
 def cancel(update: Update, context: CallbackContext) -> int:
     """Cancels and ends the conversation."""
@@ -125,11 +204,13 @@ def cancel(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+# Gloabal variables
+points_for_the_abilities = 0
 
 def main() -> None:
     """Run the bot."""
     # Create the Updater and pass it your bot's token.
-    with open('/Users/luciobencardino/Documents/corso_PII/13thAge-TelegramBot/useful_only_for_me/token.py', 'r') as file:
+    with open('/Users/luciobencardino/Documents/corso_PII/13thAge-TelegramBot/useful_only_for_me/token.txt', 'r') as file:
         token = file.read()
     updater = Updater(token)
 
@@ -142,7 +223,8 @@ def main() -> None:
         states={
             NAME: [MessageHandler(Filters.text, name)],
             RACE: [MessageHandler(Filters.regex('^(Dwarf|Gnome|Half-elf|Halfing|Half-orc|High Elf|Human|Wood Elf)$'), race)],
-            CLASS: [MessageHandler(Filters.regex('^(Barbarian|Bard|Cleric|Fighter|Paladin|Ranger|Rogue|Sorcerer|Wizard)$'), class_)]
+            CLASS: [MessageHandler(Filters.regex('^(Barbarian|Bard|Cleric|Fighter|Paladin|Ranger|Rogue|Sorcerer|Wizard)$'), class_)],
+            ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
