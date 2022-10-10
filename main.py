@@ -11,6 +11,7 @@ import logging
 import random
 from urllib.request import ProxyHandler
 import races
+import classes
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -33,7 +34,7 @@ NAME, RACE, CLASS, ROLL = range(4)
 
 
 def start(update: Update, context: CallbackContext) -> int:
-    """Starts the conversation and asks the user about their gender."""
+    """Starts the conversation and asks to choose a name for the PC."""
 
     update.message.reply_text(
         'Hi, I\'m the bot that will help you to play 13th Age! '
@@ -54,8 +55,42 @@ def name(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
     logger.info("Name of the PC: %s", update.message.text)
+
+    def prod_str():
+        """Returns each race and each class with their ability scores."""
+
+        s = 'Races:\n'
+        for key in races.races.keys():
+            s += key + ' -> '
+            for index, item in enumerate(races.races[key]['ability score']):
+                s += short_to_long_for_abilities(item)
+                if(not len(races.races[key]['ability score']) == index+1):
+                    s += ', '
+                else:
+                    s += '.'
+            s += '\n'
+
+        s += '--------------\n'
+
+        s += 'Classes:\n'
+        for key in classes.classes.keys():
+            s += key + ' -> '
+            for index, item in enumerate(classes.classes[key]['ability score']):
+                s += short_to_long_for_abilities(item)
+                if(not len(classes.classes[key]['ability score']) == index+1):
+                    s += ', '
+                else:
+                    s += '.'
+            s += '\n'
+            
+        return s
+
     update.message.reply_text(
-        f'Choose the race.',
+            prod_str()
+    )
+
+    update.message.reply_text(
+        'Choose the race.',
         reply_markup=ReplyKeyboardMarkup(
             reply_keyboard, one_time_keyboard=True, input_field_placeholder='Choose the race.'
         )
@@ -67,17 +102,10 @@ def name(update: Update, context: CallbackContext) -> int:
 def race(update: Update, context: CallbackContext) -> int:
     """Stores the race and asks for the class"""
 
-    reply_keyboard = [
-        ['Barbarian'],
-        ['Bard'],
-        ['Cleric'],
-        ['Fighter'],
-        ['Paladin'],
-        ['Ranger'],
-        ['Rogue'],
-        ['Sorcerer'],
-        ['Wizard']
-    ]
+    reply_keyboard = []
+    for key in classes.classes.keys():
+        temp_list = [key]
+        reply_keyboard.append(temp_list)
     
     logger.info("Race of the PC: %s", update.message.text)
     update.message.reply_text(
@@ -252,7 +280,7 @@ def main() -> None:
         states={
             NAME: [MessageHandler(Filters.text, name)],
             RACE: [MessageHandler(Filters.regex(accettable_elements_from_dict(races.races)), race)],
-            CLASS: [MessageHandler(Filters.regex('^(Barbarian|Bard|Cleric|Fighter|Paladin|Ranger|Rogue|Sorcerer|Wizard)$'), class_)],
+            CLASS: [MessageHandler(Filters.regex(accettable_elements_from_dict(classes.classes)), class_)],
             ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
