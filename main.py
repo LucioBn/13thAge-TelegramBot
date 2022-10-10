@@ -9,6 +9,8 @@ bot.
 
 import logging
 import random
+from urllib.request import ProxyHandler
+import races
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -45,16 +47,12 @@ def start(update: Update, context: CallbackContext) -> int:
 def name(update: Update, context: CallbackContext) -> int:
     """Stores the chosen name and asks for the race."""
 
-    reply_keyboard = [
-        ['Dwarf'],
-        ['Gnome'],
-        ['Half-elf'],
-        ['Halfing'],
-        ['Half-orc'],
-        ['High Elf'],
-        ['Human'],
-        ['Wood Elf']
-        ]
+    print(accettable_elements_from_dict(races.races))
+
+    reply_keyboard = []
+    for key in races.races.keys():
+        temp_list = [key]
+        reply_keyboard.append(temp_list)
 
     user = update.message.from_user
     logger.info("Name of the PC: %s", update.message.text)
@@ -204,6 +202,39 @@ def cancel(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+
+# Usefull
+def short_to_long_for_abilities(short) -> str:
+    if(short == 'Str'):
+        return 'Strenght'
+    elif(short == 'Con'):
+        return 'Constitution'
+    elif(short == 'Dex'):
+        return 'Dexterity'
+    elif(short == 'Int'):
+        return 'Intelligence'
+    elif(short == 'Wis'):
+        return 'Wisdom'
+    elif(short == 'Cha'):
+        return 'Charisma'
+    else:
+        return 'No abilty for that abbrevation.'
+
+
+def accettable_elements_from_dict(dict) -> str:
+    s = '^('
+    first = True
+    for key in dict.keys():
+        if(not first):
+            s += '|'
+        else:
+            first = False
+        s += key
+    s += ')$'
+
+    return s
+
+
 # Gloabal variables
 points_for_the_abilities = 0
 
@@ -222,7 +253,7 @@ def main() -> None:
         entry_points=[CommandHandler('start', start)],
         states={
             NAME: [MessageHandler(Filters.text, name)],
-            RACE: [MessageHandler(Filters.regex('^(Dwarf|Gnome|Half-elf|Halfing|Half-orc|High Elf|Human|Wood Elf)$'), race)],
+            RACE: [MessageHandler(Filters.regex(accettable_elements_from_dict(races.races)), race)],
             CLASS: [MessageHandler(Filters.regex('^(Barbarian|Bard|Cleric|Fighter|Paladin|Ranger|Rogue|Sorcerer|Wizard)$'), class_)],
             ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)]
         },
