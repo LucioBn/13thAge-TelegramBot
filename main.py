@@ -47,8 +47,6 @@ def start(update: Update, context: CallbackContext) -> int:
 def name(update: Update, context: CallbackContext) -> int:
     """Stores the chosen name and asks for the race."""
 
-    print(accettable_elements_from_dict(races.races))
-
     reply_keyboard = []
     for key in races.races.keys():
         temp_list = [key]
