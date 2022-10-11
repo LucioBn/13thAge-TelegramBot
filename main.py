@@ -7,11 +7,13 @@ Press Ctrl-C on the command line or send a signal to the process to stop the
 bot.
 """
 
+from array import array
 import logging
 import random
 from urllib.request import ProxyHandler
 import races
 import classes
+import abilities
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -30,7 +32,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-NAME, RACE, CLASS, ROLL = range(4)
+NAME, RACE, CLASS, ROLL, ABILITY_SCORES = range(5)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -91,8 +93,8 @@ def name(update: Update, context: CallbackContext) -> int:
 
     update.message.reply_text(
         'Choose the race.',
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Choose the race.'
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the race.'
         )
     )
 
@@ -110,8 +112,8 @@ def race(update: Update, context: CallbackContext) -> int:
     logger.info("Race of the PC: %s", update.message.text)
     update.message.reply_text(
         'Choose the class.',
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Choose the class.'
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the class.'
         )
     )
 
@@ -130,8 +132,8 @@ def class_(update: Update, context: CallbackContext) -> int:
         'To accumulate the points to buy the scores of each ability, '
         'roll 4d6 for 6 times, then the low die in each roll will be dropped and '
         'finally you will obtain your points.',
-        reply_markup=ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard=True, input_field_placeholder='Roll 4d6 6 times.'
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Roll 4d6 6 times.'
         )
     )
 
@@ -139,9 +141,9 @@ def class_(update: Update, context: CallbackContext) -> int:
 
 
 def roll(update: Update, context: CallbackContext) -> int:
-    """Sends the results of 6 rolls of 4 dice."""
+    """Sends the results of 6 rolls of 4 dice and sends the 6 results and the abilities to buy scores. Also assign the first result."""
 
-    def roll_4d6_and_return_max(index) -> int:
+    def best_3_roll_of_4d6(index) -> int:
         if(index == 1):
             pos = 'first'
         elif(index == 2):
@@ -207,13 +209,58 @@ def roll(update: Update, context: CallbackContext) -> int:
 
     global points_for_the_abilities
     for index in range(6):
-        points_for_the_abilities += roll_4d6_and_return_max(index+1)
+        points_for_the_abilities.append(best_3_roll_of_4d6(index+1))
+
+    reply_keyboard = []
+    for elem in abilities.abilities:
+        temp_list = [elem]
+        reply_keyboard.append(temp_list)
 
     update.message.reply_text(
-        f'You have {points_for_the_abilities} points to spend.'
+        f'The six results are {from_array_to_str(points_for_the_abilities)}.\n'
+        'Assign each result to one ability.'
     )
 
-    return ConversationHandler.END
+    update.message.reply_text(
+        f'Assign {points_for_the_abilities[0]}.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the ability.'
+        )
+    )
+    
+    return ABILITY_SCORES
+
+
+def ability_scores(update: Update, context: CallbackContext):
+    """Asks to assign the results of the 6 4d6 to each ability."""
+
+    global abilities_to_be_assigned
+
+    print(f'Ability: {update.message.text}')
+    abilities_to_be_assigned.remove(update.message.text)
+    logger.info(f"{points_for_the_abilities[0]} points assigned to {update.message.text}")
+    points_for_the_abilities.pop(0)
+
+    if len(abilities_to_be_assigned) == 0:
+        update.message.reply_text(
+            'All the abilities have been assigned.',
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for elem in abilities_to_be_assigned:
+        temp_list = [elem]
+        reply_keyboard.append(temp_list)
+    
+    update.message.reply_text(
+        f'Assign {points_for_the_abilities[0]}.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the ability.'
+        )
+    )
+
+    return ABILITY_SCORES
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -223,7 +270,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
     logger.info("User %s canceled the conversation.", user.first_name)
     update.message.reply_text(
         'Bye! Send /start if you want to play again.\n'
-        'See you next time!', reply_markup=ReplyKeyboardRemove()
+        'See you next time!'
     )
 
     return ConversationHandler.END
@@ -231,23 +278,12 @@ def cancel(update: Update, context: CallbackContext) -> int:
 
 # Usefull
 def short_to_long_for_abilities(short) -> str:
-    if(short == 'Str'):
-        return 'Strenght'
-    elif(short == 'Con'):
-        return 'Constitution'
-    elif(short == 'Dex'):
-        return 'Dexterity'
-    elif(short == 'Int'):
-        return 'Intelligence'
-    elif(short == 'Wis'):
-        return 'Wisdom'
-    elif(short == 'Cha'):
-        return 'Charisma'
-    else:
-        return 'No abilty for that abbrevation.'
+    for ability in abilities.abilities:
+        if(short in ability):
+            return ability
 
 
-def accettable_elements_from_dict(dict) -> str:
+def accettable_elements(dict: dict) -> str:
     s = '^('
     first = True
     for key in dict.keys():
@@ -261,8 +297,33 @@ def accettable_elements_from_dict(dict) -> str:
     return s
 
 
+def accettable_elements(array: array) -> str:
+    s = '^('
+    first = True
+    for elem in array:
+        if(not first):
+            s += '|'
+        else:
+            first = False
+        s += elem
+    s += ')$'
+
+    return s
+
+
+def from_array_to_str(array) -> str:
+    s = ''
+    banned_char = ['[', ']', "'"]
+    for index, elem in enumerate(str(array)):
+        if(elem not in banned_char):
+            s += elem
+    
+    return s
+
+
 # Gloabal variables
-points_for_the_abilities = 0
+points_for_the_abilities = []
+abilities_to_be_assigned = abilities.abilities
 
 def main() -> None:
     """Run the bot."""
@@ -279,9 +340,10 @@ def main() -> None:
         entry_points=[CommandHandler('start', start)],
         states={
             NAME: [MessageHandler(Filters.text, name)],
-            RACE: [MessageHandler(Filters.regex(accettable_elements_from_dict(races.races)), race)],
-            CLASS: [MessageHandler(Filters.regex(accettable_elements_from_dict(classes.classes)), class_)],
-            ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)]
+            RACE: [MessageHandler(Filters.regex(accettable_elements(races.races)), race)],
+            CLASS: [MessageHandler(Filters.regex(accettable_elements(classes.classes)), class_)],
+            ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)],
+            ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
