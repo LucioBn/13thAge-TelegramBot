@@ -35,7 +35,7 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-NAME, RACE, CLASS, ROLL, ABILITY_SCORES = range(5)
+NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS = range(7)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -63,7 +63,7 @@ def name(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     user_name = user.name
     players[user_name] = {}
-    update_persons_json("PC's name", f'{update.message.text}')
+    update_persons_json("PC's name", update.message.text)
 
     def prod_str():
         """Returns each race and each class with their ability scores."""
@@ -116,7 +116,7 @@ def race(update: Update, context: CallbackContext) -> int:
         temp_list = [key]
         reply_keyboard.append(temp_list)
     
-    update_persons_json('Race', f'{update.message.text}')
+    update_persons_json('Race', update.message.text)
     
     update.message.reply_text(
         'Choose the class.',
@@ -135,7 +135,7 @@ def class_(update: Update, context: CallbackContext) -> int:
         ['Roll']
     ]
 
-    update_persons_json('Class', f'{update.message.text}')
+    update_persons_json('Class', update.message.text)
 
     update.message.reply_text(
         'To accumulate the points to buy the scores of each ability, '
@@ -249,22 +249,39 @@ def roll(update: Update, context: CallbackContext) -> int:
 
 
 def ability_scores(update: Update, context: CallbackContext):
-    """Asks to assign the results of the 6 4d6 to each ability."""
+    """Asks to assign the results of the 6 4d6 to each ability. At the end asks the ability score to assign from the race"""
     
     global abilities_to_be_assigned
 
     abilities_to_be_assigned.remove(update.message.text)
-    update_persons_json(f'{update.message.text}', points_for_the_abilities[0])
+    update_persons_json(update.message.text, points_for_the_abilities[0])
     points_for_the_abilities.pop(0)
 
     if len(abilities_to_be_assigned) == 0:
+        abilities_to_be_assigned = []
+        for ability in races.races[players[user_name]['Race']]['ability score']:
+            abilities_to_be_assigned.append(short_to_long_for_abilities(ability))
+
+        reply_keyboard = []
+        for ability in abilities_to_be_assigned:
+            temp_list = [ability]
+            reply_keyboard.append(temp_list)
+
         update.message.reply_text(
-            'All the abilities have been assigned.',
+            'All the abilities have been assigned.\n'
+            f'{ability_with_their_score()}',
+            reply_markup = ReplyKeyboardRemove()
+        )
+        update.message.reply_text(
+            'Thanks to the chosen race, assign +2 scores at one of the abilities from the list above.',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the ability.'
+            )
         )
 
         write_players_json()
 
-        return ConversationHandler.END
+        return ABILITY_SCORES_FROM_RACE
 
     reply_keyboard = []
     for elem in abilities_to_be_assigned:
@@ -279,6 +296,43 @@ def ability_scores(update: Update, context: CallbackContext):
     )
 
     return ABILITY_SCORES
+
+
+def ability_scores_from_race(update: Update, context: CallbackContext) -> int:
+    """Store the score to assign from the race and asks the ability score to assign from the class"""
+
+    update_persons_json(update.message.text, players[user_name][update.message.text] + 2)
+
+    abilities_to_be_assigned = []
+    for ability in classes.classes[players[user_name]['Class']]['ability score']:
+        abilities_to_be_assigned.append(short_to_long_for_abilities(ability))
+
+    reply_keyboard = []
+    for ability in abilities_to_be_assigned:
+        temp_list = [ability]
+        reply_keyboard.append(temp_list)
+
+    update.message.reply_text(
+        'Thanks to the chosen class, assign +2 scores at one of the abilities from the list above.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the ability.'
+        )
+    )
+
+    return ABILITY_SCORES_FROM_CLASS
+
+
+def ability_scores_from_class(update: Update, context: CallbackContext) -> int:
+    """Store the score assign from the class."""
+
+    update_persons_json(update.message.text, players[user_name][update.message.text] + 2)
+
+    update.message.reply_text(
+        f'Now the score of each ability is:\n{ability_with_their_score()}',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -344,6 +398,18 @@ def from_array_to_str(array) -> str:
     return s
 
 
+def ability_with_their_score() -> str:
+    s = ''
+    for index, ability in enumerate(abilities.abilities):
+        s += ability + ' is ' + str(players[user_name][ability]) + ' points'
+        if len(abilities.abilities) == index+1:
+            s += '.'
+        else:
+            s += ';\n'
+
+    return s
+
+
 def write_players_json() -> None:
     """Write the players.json file"""
 
@@ -386,7 +452,9 @@ def main() -> None:
             RACE: [MessageHandler(Filters.regex(accettable_elements(races.races)), race)],
             CLASS: [MessageHandler(Filters.regex(accettable_elements(classes.classes)), class_)],
             ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)],
-            ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores)]
+            ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores)],
+            ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores_from_race)],
+            ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores_from_class)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
