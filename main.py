@@ -11,9 +11,12 @@ from array import array
 import logging
 import random
 from urllib.request import ProxyHandler
+
 import races
 import classes
 import abilities
+
+import json
 
 from telegram import ReplyKeyboardMarkup, ReplyKeyboardRemove, Update
 from telegram.ext import (
@@ -55,8 +58,12 @@ def name(update: Update, context: CallbackContext) -> int:
         temp_list = [key]
         reply_keyboard.append(temp_list)
 
+
+    global user_name
     user = update.message.from_user
-    logger.info("Name of the PC: %s", update.message.text)
+    user_name = user.name
+    players[user_name] = {}
+    update_persons_json("PC's name", f'{update.message.text}')
 
     def prod_str():
         """Returns each race and each class with their ability scores."""
@@ -109,7 +116,8 @@ def race(update: Update, context: CallbackContext) -> int:
         temp_list = [key]
         reply_keyboard.append(temp_list)
     
-    logger.info("Race of the PC: %s", update.message.text)
+    update_persons_json('Race', f'{update.message.text}')
+    
     update.message.reply_text(
         'Choose the class.',
         reply_markup = ReplyKeyboardMarkup(
@@ -127,7 +135,8 @@ def class_(update: Update, context: CallbackContext) -> int:
         ['Roll']
     ]
 
-    logger.info("Class of the PC: %s", update.message.text)
+    update_persons_json('Class', f'{update.message.text}')
+
     update.message.reply_text(
         'To accumulate the points to buy the scores of each ability, '
         'roll 4d6 for 6 times, then the low die in each roll will be dropped and '
@@ -162,19 +171,22 @@ def roll(update: Update, context: CallbackContext) -> int:
             )
             return ConversationHandler.END
 
-        update.message.reply_text(
-            f'The results of the {pos} group are:'
-        )
+        s = ''
+
+        def add_to_str(string) -> None:
+            nonlocal s
+            
+            s += str(string)
+            if(len(s) == 7):
+                s += ' and '
+            elif(len(s) != 13):
+                s += ', '
 
         min = random.randint(1,6)
-        update.message.reply_text(
-            f'First die -> {min}',
-        )
+        add_to_str(min)
 
         roll = random.randint(1,6)
-        update.message.reply_text(
-            f'Second die -> {roll}',
-        )
+        add_to_str(roll)
         sum = 0
         if(roll < min):
             sum += min
@@ -183,9 +195,7 @@ def roll(update: Update, context: CallbackContext) -> int:
             sum += roll
 
         roll = random.randint(1,6)
-        update.message.reply_text(
-            f'Third die -> {roll}',
-        )
+        add_to_str(roll)
         if(roll < min):
             sum += min
             min = roll
@@ -193,16 +203,19 @@ def roll(update: Update, context: CallbackContext) -> int:
             sum += roll
 
         roll = random.randint(1,6)
-        update.message.reply_text(
-            f'Fourth die -> {roll}',
-        )
+        add_to_str(roll)
         if(roll < min):
             sum += min
         else:
             sum += roll
 
+        s += '.'
         update.message.reply_text(
-            f'--------------',
+            f'The results of the {pos} group are: {s}'
+        )
+
+        update.message.reply_text(
+            '--------------',
         )
 
         return sum
@@ -227,24 +240,25 @@ def roll(update: Update, context: CallbackContext) -> int:
             reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the ability.'
         )
     )
-    
+
     return ABILITY_SCORES
 
 
 def ability_scores(update: Update, context: CallbackContext):
     """Asks to assign the results of the 6 4d6 to each ability."""
-
+    
     global abilities_to_be_assigned
 
-    print(f'Ability: {update.message.text}')
     abilities_to_be_assigned.remove(update.message.text)
-    logger.info(f"{points_for_the_abilities[0]} points assigned to {update.message.text}")
+    update_persons_json(f'{update.message.text}', points_for_the_abilities[0])
     points_for_the_abilities.pop(0)
 
     if len(abilities_to_be_assigned) == 0:
         update.message.reply_text(
             'All the abilities have been assigned.',
         )
+
+        write_players_json()
 
         return ConversationHandler.END
 
@@ -267,7 +281,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
     """Cancels and ends the conversation."""
 
     user = update.message.from_user
-    logger.info("User %s canceled the conversation.", user.first_name)
+    logger.info(f"User {user.first_name} canceled the conversation.")
     update.message.reply_text(
         'Bye! Send /start if you want to play again.\n'
         'See you next time!'
@@ -282,6 +296,11 @@ def short_to_long_for_abilities(short) -> str:
         if(short in ability):
             return ability
 
+
+def set_abilities():
+    global abilities_to_be_assigned
+    
+    abilities_to_be_assigned = abilities.abilities.copy()
 
 def accettable_elements(dict: dict) -> str:
     s = '^('
@@ -321,9 +340,25 @@ def from_array_to_str(array) -> str:
     return s
 
 
+def write_players_json() -> None:
+    """Write the players.json file"""
+
+    with open('players.json', 'w') as outfile:
+        json.dump(players, outfile)
+
+
+def update_persons_json(key, value) -> None:
+    global players
+
+    players[user_name][key] = value
+
+
 # Gloabal variables
 points_for_the_abilities = []
-abilities_to_be_assigned = abilities.abilities
+abilities_to_be_assigned: array
+
+players = {}
+user_name = ''
 
 def main() -> None:
     """Run the bot."""
@@ -334,6 +369,10 @@ def main() -> None:
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
+
+    # Set the abilities to be assigned
+    global abilities_to_be_assigned
+    abilities_to_be_assigned = abilities.abilities.copy()
 
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler = ConversationHandler(
