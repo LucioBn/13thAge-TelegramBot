@@ -241,6 +241,10 @@ def roll(update: Update, context: CallbackContext) -> int:
         )
     )
 
+    global abilities_to_be_assigned
+    if len(abilities_to_be_assigned) == 0:
+        abilities_to_be_assigned = abilities.abilities.copy()
+
     return ABILITY_SCORES
 
 
