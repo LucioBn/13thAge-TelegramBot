@@ -58,12 +58,17 @@ def name(update: Update, context: CallbackContext) -> int:
         temp_list = [key]
         reply_keyboard.append(temp_list)
 
-
-    global user_name
     user = update.message.from_user
-    user_name = user.name
-    players[user_name] = {}
-    update_persons_json("PC's name", update.message.text)
+    players[user.name] = {}
+    update_persons_json(user.name, "PC's name", update.message.text)
+    set_abilities(user.name)
+
+    global first
+    if first:
+        global abilities_to_be_assigned
+
+        del abilities_to_be_assigned['']
+        first = False
 
     def prod_str():
         """Returns each race and each class with their ability scores."""
@@ -116,7 +121,8 @@ def race(update: Update, context: CallbackContext) -> int:
         temp_list = [key]
         reply_keyboard.append(temp_list)
     
-    update_persons_json('Race', update.message.text)
+    user = update.message.from_user
+    update_persons_json(user.name, 'Race', update.message.text)
     
     update.message.reply_text(
         'Choose the class.',
@@ -135,7 +141,8 @@ def class_(update: Update, context: CallbackContext) -> int:
         ['Roll']
     ]
 
-    update_persons_json('Class', update.message.text)
+    user = update.message.from_user
+    update_persons_json(user.name, 'Class', update.message.text)
 
     update.message.reply_text(
         'To accumulate the points to buy the scores of each ability, '
@@ -241,35 +248,41 @@ def roll(update: Update, context: CallbackContext) -> int:
         )
     )
 
-    global abilities_to_be_assigned
+    user = update.message.from_user
     if len(abilities_to_be_assigned) == 0:
-        abilities_to_be_assigned = abilities.abilities.copy()
+        set_abilities(user.name)
+
+    global check
+    check = abilities_to_be_assigned[user.name]
+    print(check)
 
     return ABILITY_SCORES
 
 
 def ability_scores(update: Update, context: CallbackContext):
     """Asks to assign the results of the 6 4d6 to each ability. At the end asks the ability score to assign from the race"""
-    
-    global abilities_to_be_assigned
 
-    abilities_to_be_assigned.remove(update.message.text)
-    update_persons_json(update.message.text, points_for_the_abilities[0])
+    global abilities_to_be_assigned
+    global check
+
+    user = update.message.from_user
+    abilities_to_be_assigned[user.name].remove(update.message.text)
+    update_persons_json(user.name, update.message.text, points_for_the_abilities[0])
     points_for_the_abilities.pop(0)
 
-    if len(abilities_to_be_assigned) == 0:
-        abilities_to_be_assigned = []
-        for ability in races.races[players[user_name]['Race']]['ability score']:
-            abilities_to_be_assigned.append(short_to_long_for_abilities(ability))
+    if len(abilities_to_be_assigned[user.name]) == 0:
+        abilities_to_be_assigned[user.name] = []
+        for ability in races.races[players[user.name]['Race']]['ability score']:
+            abilities_to_be_assigned[user.name].append(short_to_long_for_abilities(ability))
 
         reply_keyboard = []
-        for ability in abilities_to_be_assigned:
+        for ability in abilities_to_be_assigned[user.name]:
             temp_list = [ability]
             reply_keyboard.append(temp_list)
 
         update.message.reply_text(
             'All the abilities have been assigned.\n'
-            f'{ability_with_their_score()}',
+            f'{ability_with_their_score(user.name)}',
             reply_markup = ReplyKeyboardRemove()
         )
         update.message.reply_text(
@@ -281,10 +294,12 @@ def ability_scores(update: Update, context: CallbackContext):
 
         write_players_json()
 
+        check = abilities_to_be_assigned[user.name]
+
         return ABILITY_SCORES_FROM_RACE
 
     reply_keyboard = []
-    for elem in abilities_to_be_assigned:
+    for elem in abilities_to_be_assigned[user.name]:
         temp_list = [elem]
         reply_keyboard.append(temp_list)
     
@@ -295,20 +310,23 @@ def ability_scores(update: Update, context: CallbackContext):
         )
     )
 
+    check = abilities_to_be_assigned[user.name]
+
     return ABILITY_SCORES
 
 
 def ability_scores_from_race(update: Update, context: CallbackContext) -> int:
     """Store the score to assign from the race and asks the ability score to assign from the class"""
 
-    update_persons_json(update.message.text, players[user_name][update.message.text] + 2)
+    user = update.message.from_user
+    update_persons_json(user.name, update.message.text, players[user.name][update.message.text] + 2)
 
-    abilities_to_be_assigned = []
-    for ability in classes.classes[players[user_name]['Class']]['ability score']:
-        abilities_to_be_assigned.append(short_to_long_for_abilities(ability))
+    abilities_to_be_assigned[user.name] = []
+    for ability in classes.classes[players[user.name]['Class']]['ability score']:
+        abilities_to_be_assigned[user.name].append(short_to_long_for_abilities(ability))
 
     reply_keyboard = []
-    for ability in abilities_to_be_assigned:
+    for ability in abilities_to_be_assigned[user.name]:
         temp_list = [ability]
         reply_keyboard.append(temp_list)
 
@@ -319,16 +337,20 @@ def ability_scores_from_race(update: Update, context: CallbackContext) -> int:
         )
     )
 
+    global check
+    check = abilities_to_be_assigned[user.name]
+
     return ABILITY_SCORES_FROM_CLASS
 
 
 def ability_scores_from_class(update: Update, context: CallbackContext) -> int:
     """Store the score assign from the class."""
 
-    update_persons_json(update.message.text, players[user_name][update.message.text] + 2)
+    user = update.message.from_user
+    update_persons_json(user.name, update.message.text, players[user.name][update.message.text] + 2)
 
     update.message.reply_text(
-        f'Now the score of each ability is:\n{ability_with_their_score()}',
+        f'Now the score of each ability is:\n{ability_with_their_score(user.name)}',
         reply_markup = ReplyKeyboardRemove()
     )
 
@@ -355,10 +377,10 @@ def short_to_long_for_abilities(short) -> str:
             return ability
 
 
-def set_abilities():
+def set_abilities(username):
     global abilities_to_be_assigned
     
-    abilities_to_be_assigned = abilities.abilities.copy()
+    abilities_to_be_assigned[username] = abilities.abilities.copy()
 
 def accettable_elements(dict: dict) -> str:
     s = '^('
@@ -370,21 +392,23 @@ def accettable_elements(dict: dict) -> str:
             first = False
         s += key
     s += ')$'
-
+    print(f'Here {s}')
     return s
 
 
 def accettable_elements(array: array) -> str:
     s = '^('
     first = True
+    banned_char = ['[', ']', "'"]
     for elem in array:
-        if(not first):
-            s += '|'
-        else:
-            first = False
-        s += elem
+        if elem not in banned_char:
+            if(not first):
+                s += '|'
+            else:
+                first = False
+            s += elem
     s += ')$'
-
+    print(f'Here2 {s}')
     return s
 
 
@@ -392,16 +416,16 @@ def from_array_to_str(array) -> str:
     s = ''
     banned_char = ['[', ']', "'"]
     for index, elem in enumerate(str(array)):
-        if(elem not in banned_char):
+        if elem not in banned_char:
             s += elem
     
     return s
 
 
-def ability_with_their_score() -> str:
+def ability_with_their_score(username) -> str:
     s = ''
     for index, ability in enumerate(abilities.abilities):
-        s += ability + ' is ' + str(players[user_name][ability]) + ' points'
+        s += ability + ' is ' + str(players[str(username)][ability]) + ' points'
         if len(abilities.abilities) == index+1:
             s += '.'
         else:
@@ -417,18 +441,19 @@ def write_players_json() -> None:
         json.dump(players, outfile)
 
 
-def update_persons_json(key, value) -> None:
+def update_persons_json(username, key, value) -> None:
     global players
 
-    players[user_name][key] = value
+    players[username][key] = value
 
 
 # Gloabal variables
 points_for_the_abilities = []
-abilities_to_be_assigned: array
-
+abilities_to_be_assigned = {'': []}
+check = []
+first = True
+username = ''
 players = {}
-user_name = ''
 
 def main() -> None:
     """Run the bot."""
@@ -440,21 +465,17 @@ def main() -> None:
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
-    # Set the abilities to be assigned
-    global abilities_to_be_assigned
-    abilities_to_be_assigned = abilities.abilities.copy()
-
     # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
     conv_handler = ConversationHandler(
-        entry_points=[CommandHandler('start', start)],
-        states={
+        entry_points = [CommandHandler('start', start)],
+        states = {
             NAME: [MessageHandler(Filters.text, name)],
             RACE: [MessageHandler(Filters.regex(accettable_elements(races.races)), race)],
             CLASS: [MessageHandler(Filters.regex(accettable_elements(classes.classes)), class_)],
             ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)],
-            ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores)],
-            ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores_from_race)],
-            ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities_to_be_assigned)), ability_scores_from_class)]
+            ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores)],
+            ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_race)],
+            ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_class)]
         },
         fallbacks=[CommandHandler('cancel', cancel)],
     )
