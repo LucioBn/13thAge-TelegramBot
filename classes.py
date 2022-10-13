@@ -15,7 +15,12 @@ classes = {
             }
         },
         'PD': 11,
-        'MD': 10
+        'MD': 10,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 10
+        }
     },
     'Bard': {
         'ability score': ['Dex', 'Cha'],
@@ -33,7 +38,12 @@ classes = {
                 },
         },
         'PD': 11,
-        'MD': 10
+        'MD': 10,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 8
+        }
     },
     'Cleric': {
         'ability score': ['Str', 'Wis'],
@@ -51,7 +61,12 @@ classes = {
                 },
         },
         'PD': 11,
-        'MD': 11
+        'MD': 11,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 8
+        }
     },
     'Fighter': {
         'ability score': ['Str', 'Con'],
@@ -69,7 +84,12 @@ classes = {
                 },
         },
         'PD': 10,
-        'MD': 10
+        'MD': 10,
+        'Recoveries': 9,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 10
+        }
     },
     'Paladin': {
         'ability score': ['Str', 'Cha'],
@@ -87,7 +107,12 @@ classes = {
                 },
         },
         'PD': 10,
-        'MD': 12
+        'MD': 12,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 10
+        }
     },
     'Ranger': {
         'ability score': ['Str', 'Dex', 'Wis'],
@@ -105,7 +130,12 @@ classes = {
                 },
         },
         'PD': 11,
-        'MD': 10
+        'MD': 10,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 8
+        }
     },
     'Rogue': {
         'ability score': ['Dex', 'Cha'],
@@ -123,7 +153,12 @@ classes = {
                 },
         },
         'PD': 12,
-        'MD': 10
+        'MD': 10,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 8
+        }
     },
     'Sorcerer': {
         'ability score': ['Cha', 'Con'],
@@ -141,7 +176,12 @@ classes = {
                 },
         },
         'PD': 11,
-        'MD': 10
+        'MD': 10,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 6
+        }
     },
     'Wizard': {
         'ability score': ['Int', 'Wis'],
@@ -159,6 +199,11 @@ classes = {
                 },
         },
         'PD': 10,
-        'MD': 12
+        'MD': 12,
+        'Recoveries': 8,
+        'Recovery Dice': {
+            'times': 1,
+            'faces': 6
+        }
     }
 }
