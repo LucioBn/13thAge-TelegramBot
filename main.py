@@ -8,6 +8,7 @@ bot.
 """
 
 from array import array
+from asyncore import read
 import logging
 import random
 from urllib.request import ProxyHandler
@@ -60,7 +61,7 @@ def name(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
     players[user.name] = {}
-    update_persons_json(user.name, "PC's name", update.message.text)
+    update_persons_dict(user.name, "PC's name", update.message.text)
     set_abilities(user.name)
 
     global first
@@ -122,7 +123,7 @@ def race(update: Update, context: CallbackContext) -> int:
         reply_keyboard.append(temp_list)
     
     user = update.message.from_user
-    update_persons_json(user.name, 'Race', update.message.text)
+    update_persons_dict(user.name, 'Race', update.message.text)
     
     update.message.reply_text(
         'Choose the class.',
@@ -142,7 +143,8 @@ def class_(update: Update, context: CallbackContext) -> int:
     ]
 
     user = update.message.from_user
-    update_persons_json(user.name, 'Class', update.message.text)
+    update_persons_dict(user.name, 'Class', update.message.text)
+    update_persons_dict(user.name, 'Class level', 1)
 
     update.message.reply_text(
         'To accumulate the points to buy the scores of each ability, '
@@ -254,7 +256,6 @@ def roll(update: Update, context: CallbackContext) -> int:
 
     global check
     check = abilities_to_be_assigned[user.name]
-    print(check)
 
     return ABILITY_SCORES
 
@@ -267,7 +268,7 @@ def ability_scores(update: Update, context: CallbackContext):
 
     user = update.message.from_user
     abilities_to_be_assigned[user.name].remove(update.message.text)
-    update_persons_json(user.name, update.message.text, points_for_the_abilities[0])
+    update_persons_dict(user.name, update.message.text, points_for_the_abilities[0])
     points_for_the_abilities.pop(0)
 
     if len(abilities_to_be_assigned[user.name]) == 0:
@@ -291,8 +292,6 @@ def ability_scores(update: Update, context: CallbackContext):
                 reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the ability.'
             )
         )
-
-        write_players_json()
 
         check = abilities_to_be_assigned[user.name]
 
@@ -319,7 +318,7 @@ def ability_scores_from_race(update: Update, context: CallbackContext) -> int:
     """Store the score to assign from the race and asks the ability score to assign from the class"""
 
     user = update.message.from_user
-    update_persons_json(user.name, update.message.text, players[user.name][update.message.text] + 2)
+    update_persons_dict(user.name, update.message.text, players[user.name][update.message.text] + 2)
 
     abilities_to_be_assigned[user.name] = []
     for ability in classes.classes[players[user.name]['Class']]['ability score']:
@@ -344,10 +343,12 @@ def ability_scores_from_race(update: Update, context: CallbackContext) -> int:
 
 
 def ability_scores_from_class(update: Update, context: CallbackContext) -> int:
-    """Store the score assign from the class."""
+    """Store the score assign from the class and updates json file."""
 
     user = update.message.from_user
-    update_persons_json(user.name, update.message.text, players[user.name][update.message.text] + 2)
+    update_persons_dict(user.name, update.message.text, players[user.name][update.message.text] + 2)
+
+    write_players_json()
 
     update.message.reply_text(
         f'Now the score of each ability is:\n{ability_with_their_score(user.name)}',
@@ -355,6 +356,22 @@ def ability_scores_from_class(update: Update, context: CallbackContext) -> int:
     )
 
     return ConversationHandler.END
+
+
+def combat_stats(update: Update, context: CallbackContext) -> None:
+    """Calculates and shows the combat stats."""
+
+    user = update.message.from_user
+
+    update_hp_in_persons(user.name)
+    update_ac_in_persons(user.name)
+    update_pd_in_persons(user.name)
+    update_md_in_persons(user.name)
+    update_initiative_bonus(user.name)
+    
+    write_players_dict()
+
+    context.bot.send_message(chat_id = update.effective_chat.id, text  = players[user.name])
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -392,7 +409,7 @@ def accettable_elements(dict: dict) -> str:
             first = False
         s += key
     s += ')$'
-    print(f'Here {s}')
+
     return s
 
 
@@ -408,7 +425,7 @@ def accettable_elements(array: array) -> str:
                 first = False
             s += elem
     s += ')$'
-    print(f'Here2 {s}')
+
     return s
 
 
@@ -441,10 +458,108 @@ def write_players_json() -> None:
         json.dump(players, outfile)
 
 
-def update_persons_json(username, key, value) -> None:
+def write_players_dict() -> None:
+    """Write all the content of the json file in players dict."""
+
+    global players
+
+    with open('players.json') as json_file:
+        players = json.load(json_file)
+
+
+def update_persons_dict(username, key, value) -> None:
     global players
 
     players[username][key] = value
+
+
+def get_class_level(username) -> int:
+    return players[username]['Class level']
+
+
+def get_mid_value(list: list) -> int:
+    """Find the mid value of the elements in the list."""
+    sum = 0
+    for value in list:
+        sum += value
+
+    return float_with_two_decimal_places(sum / len(list))
+
+
+def float_with_two_decimal_places(value) -> float:
+    """Returns the value with only two decimal"""
+
+    return round(value, 2)
+
+
+# Roll a die
+def roll_d20() -> int:
+    """Roll a die with 20 faces."""
+    
+    return random.randint(1,20)
+
+
+# Update combat stats
+def update_hp_in_persons(username):
+    """Update hp in persons.json for that specific user."""
+
+    write_players_dict()
+    update_persons_dict(username, 'HP', (classes.classes[players[username]['Class']]['HP'] + players[username][short_to_long_for_abilities('Con')]) * 3)
+    write_players_json()
+
+
+def update_ac_in_persons(username):
+    """Update ac in persons.json for that specific user."""
+
+    def update_ac_in_person_detailed(username, key):
+        modifier = get_mid_value([players[username][short_to_long_for_abilities('Con')], players[username][short_to_long_for_abilities('Dex')], players[username][short_to_long_for_abilities('Wis')]])
+        write_players_dict()
+        
+        if not 'AC' in players[username].keys():
+            players[username]['AC'] = {}
+
+        if key == 'Heavy':
+            players[username]['AC']['Heavy'] = classes.classes[players[username]['Class']]['AC']['Heavy']['value'] + modifier + get_class_level(username)
+        else:
+            players[username]['AC'][key] = classes.classes[players[username]['Class']]['AC'][key] + modifier + get_class_level(username)
+        
+        write_players_json()
+    
+    update_ac_in_person_detailed(username, 'None')
+    update_ac_in_person_detailed(username, 'Light')
+    update_ac_in_person_detailed(username, 'Heavy')
+
+
+def update_pd_in_persons(username):
+    """Update pd in persons.json for that specific user."""
+
+    write_players_dict()
+
+    modifier = get_mid_value([players[username][short_to_long_for_abilities('Str')], players[username][short_to_long_for_abilities('Con')], players[username][short_to_long_for_abilities('Dex')]])
+    update_persons_dict(username, 'PD', classes.classes[players[username]['Class']]['PD'] + modifier + get_class_level(username))
+
+    write_players_json()
+
+
+def update_md_in_persons(username):
+    """Update md in persons.json for that specific user."""
+
+    write_players_dict()
+
+    modifier = get_mid_value([players[username][short_to_long_for_abilities('Int')], players[username][short_to_long_for_abilities('Wis')], players[username][short_to_long_for_abilities('Cha')]])
+    update_persons_dict(username, 'MD', classes.classes[players[username]['Class']]['MD'] + modifier + get_class_level(username))
+
+    write_players_json()
+
+
+def update_initiative_bonus(username):
+    """Update md in persons.json for that specific user."""
+
+    write_players_dict()
+
+    update_persons_dict(username, 'IB', roll_d20() + players[username][short_to_long_for_abilities('Dex')] + get_class_level(username))
+
+    write_players_json()
 
 
 # Gloabal variables
@@ -481,6 +596,7 @@ def main() -> None:
     )
 
     dispatcher.add_handler(conv_handler)
+    dispatcher.add_handler(CommandHandler("combat_stats", combat_stats))
 
     # Start the Bot
     updater.start_polling()
