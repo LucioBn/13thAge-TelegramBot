@@ -378,7 +378,7 @@ def combat_stats(update: Update, context: CallbackContext) -> None:
         if 'HP' in players[user.name].keys():
             s += f'{extend_abbreviation("HP")} -> {players[user.name]["HP"]}\n'
         if 'AC' in players[user.name].keys():
-            s += f'{extend_abbreviation("AC")}:\nNone -> {players[user.name]["AC"]["None"]}\nLight -> {players[user.name]["AC"]["Light"]}\nHeavy -> {players[user.name]["AC"]["Heavy"]}\n'
+            s += f'{extend_abbreviation("AC")}:\n- None -> {players[user.name]["AC"]["None"]}\n- Light -> {players[user.name]["AC"]["Light"]}\n- Heavy -> {players[user.name]["AC"]["Heavy"]}\n'
         if 'PD' in players[user.name].keys():
             s += f'{extend_abbreviation("PD")} -> {players[user.name]["PD"]}\n'
         if 'MD' in players[user.name].keys():
