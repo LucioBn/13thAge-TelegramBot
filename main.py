@@ -36,16 +36,77 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+GM = 0
 NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS = range(7)
 
 
 def start(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks to choose a name for the PC."""
 
+    user = update.message.from_user
+
+    for username in players.keys:
+        if players[username] == 'Game Master':
+            update.message.reply_text(
+                f'Hi {user.name}, I\'m the bot that will help you to play 13th Age!'
+                'Send /cancel to stop talking to me.\n\n'
+                'The match already have a game master, you must be a player.'
+            )
+
+            return ConversationHandler.END
+
+    reply_keyboard = [
+        ['Player'],
+        ['Game Master']
+    ]
+
     update.message.reply_text(
-        'Hi, I\'m the bot that will help you to play 13th Age! '
+        f'Hi {user.name}, I\'m the bot that will help you to play 13th Age!'
         'Send /cancel to stop talking to me.\n\n'
-        'Choose a name for your PC (playable character).'
+        'Are you a player or the game master?',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Player or GM?'
+        )
+    )
+
+    return GM
+
+
+def gm(update: Update, context: CallbackContext) -> int:
+    """Stores if the client is a player or the game master."""
+
+    global players
+    user = update.message.from_user
+
+    if update.message.text == 'Game Master':
+        players[user.name] = 'Game Master'
+        update.message.reply_text(
+            'You are the game master.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+    else:
+        players[user.name] = None
+        update.message.reply_text(
+            'When you\'re ready to set your PC (playable character), send the command /set_pc.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+    write_players_json()
+
+    return ConversationHandler.END
+
+
+def set_pc(update: Update, context: CallbackContext) -> int:
+    """Asks to set the name of the PC."""
+
+    user = update.message.from_user
+    write_players_dict()
+
+    if is_the_gm(user.name, update):
+        return ConversationHandler.END
+
+    update.message.reply_text(
+        'Choose a name for your PC.'
     )
 
     return NAME
@@ -363,6 +424,9 @@ def combat_stats(update: Update, context: CallbackContext) -> None:
 
     user = update.message.from_user
 
+    if is_the_gm(user.name, update):
+        return ConversationHandler.END
+
     update_hp_in_persons(user.name)
     update_ac_in_persons(user.name)
     update_pd_in_persons(user.name)
@@ -407,6 +471,19 @@ def cancel(update: Update, context: CallbackContext) -> int:
 
 
 # Usefull
+def is_the_gm(username: str, update) -> bool:
+    """Return true if the user is the gm and sends a message, saying them that they can't play that action."""
+
+    if players[username] == 'Game Master':
+        update.message.reply_text(
+            'You are the game master, this command is only for the players.'
+        )
+
+        return True
+    
+    return False
+
+
 def short_to_long_for_abilities(short) -> str:
     for ability in abilities.abilities:
         if(short in ability):
@@ -462,7 +539,7 @@ def ability_with_their_score(username) -> str:
     s = ''
     for index, ability in enumerate(abilities.abilities):
         s += ability + ' is ' + str(players[str(username)][ability]) + ' points'
-        if len(abilities.abilities) == index+1:
+        if len(abilities.abilities) == (index + 1):
             s += '.'
         else:
             s += ';\n'
@@ -609,9 +686,17 @@ def main() -> None:
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
 
-    # Add conversation handler with the states GENDER, PHOTO, LOCATION and BIO
-    conv_handler = ConversationHandler(
+    # Conversation handlers
+    start_handler = ConversationHandler(
         entry_points = [CommandHandler('start', start)],
+        states = {
+            GM: [MessageHandler(Filters.regex('^(Player|Game Master)$'), gm)]
+        },
+        fallbacks=[CommandHandler('cancel', cancel)]
+    )
+
+    set_pc_handler = ConversationHandler(
+        entry_points = [CommandHandler('set_pc', set_pc)],
         states = {
             NAME: [MessageHandler(Filters.text, name)],
             RACE: [MessageHandler(Filters.regex(accettable_elements(races.races)), race)],
@@ -621,11 +706,12 @@ def main() -> None:
             ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_race)],
             ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_class)]
         },
-        fallbacks=[CommandHandler('cancel', cancel)],
+        fallbacks=[CommandHandler('cancel', cancel)]
     )
 
-    dispatcher.add_handler(conv_handler)
-    dispatcher.add_handler(CommandHandler("combat_stats", combat_stats))
+    dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(set_pc_handler)
+    dispatcher.add_handler(CommandHandler('combat_stats', combat_stats))
 
     # Start the Bot
     updater.start_polling()
