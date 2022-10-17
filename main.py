@@ -45,15 +45,16 @@ def start(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    for username in players.keys:
-        if players[username] == 'Game Master':
-            update.message.reply_text(
-                f'Hi {user.name}, I\'m the bot that will help you to play 13th Age!'
-                'Send /cancel to stop talking to me.\n\n'
-                'The match already have a game master, you must be a player.'
-            )
+    if len(players) != 0:
+        for username in players.keys():
+            if players[username] == 'Game Master':
+                update.message.reply_text(
+                    f'Hi {user.name}, I\'m the bot that will help you to play 13th Age! '
+                    'Send /cancel to stop talking to me.\n\n'
+                    'The match already have a game master, you must be a player.'
+                )
 
-            return ConversationHandler.END
+                return ConversationHandler.END
 
     reply_keyboard = [
         ['Player'],
@@ -61,7 +62,7 @@ def start(update: Update, context: CallbackContext) -> int:
     ]
 
     update.message.reply_text(
-        f'Hi {user.name}, I\'m the bot that will help you to play 13th Age!'
+        f'Hi {user.name}, I\'m the bot that will help you to play 13th Age! '
         'Send /cancel to stop talking to me.\n\n'
         'Are you a player or the game master?',
         reply_markup = ReplyKeyboardMarkup(
@@ -79,6 +80,18 @@ def gm(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
 
     if update.message.text == 'Game Master':
+        if len(players) != 0:
+            for username in players.keys():
+                if players[username] == 'Game Master':
+                    players[user.name] = None
+                    update.message.reply_text(
+                        'Unfortunately you were too slow, someone stole the role of game master. So... You will be a player!'
+                        '\nWhen you\'re ready to set your PC (playable character), send the command /set_pc.',
+                        reply_markup = ReplyKeyboardRemove()
+                    )
+
+                    return ConversationHandler.END
+
         players[user.name] = 'Game Master'
         update.message.reply_text(
             'You are the game master.',
