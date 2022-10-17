@@ -10,11 +10,13 @@ bot.
 from array import array
 import logging
 import random
+from tkinter import END
 from urllib.request import ProxyHandler
 
 import races
 import classes
 import abilities
+import icons
 import expansions
 
 import json
@@ -37,7 +39,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 GM = 0
-NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS = range(7)
+NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(11)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -53,6 +55,14 @@ def start(update: Update, context: CallbackContext) -> int:
                     'Send /cancel to stop talking to me.\n\n'
                     'The match already have a game master, you must be a player.'
                 )
+
+                players[user.name] = None
+                update.message.reply_text(
+                    'When you\'re ready to set your PC (playable character), send the command /set_pc.',
+                    reply_markup = ReplyKeyboardRemove()
+                )
+
+                write_players_json()
 
                 return ConversationHandler.END
 
@@ -417,19 +427,140 @@ def ability_scores_from_race(update: Update, context: CallbackContext) -> int:
 
 
 def ability_scores_from_class(update: Update, context: CallbackContext) -> int:
-    """Store the score assign from the class and updates json file."""
+    """Store the score assign from the class and updates json file. Then asks the player for his unique thing."""
 
     user = update.message.from_user
     update_players_dict(user.name, update.message.text, players[user.name][update.message.text] + 2)
-
-    write_players_json()
 
     update.message.reply_text(
         f'Now the score of each ability is:\n{ability_with_their_score(user.name)}',
         reply_markup = ReplyKeyboardRemove()
     )
 
-    return ConversationHandler.END
+    update.message.reply_text(
+        'Describe your unique thing.'
+    )
+
+    return UNIQUE_THING
+
+
+def unique_thing(update: Update, context: CallbackContext) -> None:
+    """Store the player unique thing."""
+
+    user = update.message.from_user
+    update_players_dict(user.name, 'Unique', update.message.text)
+
+    reply_keyboard = []
+    for icon in icons.icons:
+        temp_list = [icon]
+        reply_keyboard.append(temp_list)
+
+    update.message.reply_text(
+        'Determine your icon relationships.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the icon.'
+        )
+    )
+
+    return ICON
+
+
+background_points = 8
+chosen_backgrounds = {}
+
+
+def icon(update: Update, context: CallbackContext) -> None:
+    """Stores the icon chosen by the player and asks for the pc's background."""
+
+    global players
+
+    user = update.message.from_user
+    update_players_dict(user.name, 'Icon', update.message.text)
+
+    chosen_backgrounds[user.name] = []
+
+    reply_keyboard = []
+    for background in classes.classes[players[user.name]['Class']]['Backgrounds']:
+        temp_list = [background]
+        reply_keyboard.append(temp_list)
+
+    update.message.reply_text(
+        'Choose the background of your PC.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the background.'
+        )
+    )
+
+    players[user.name]['Backgrounds'] = {}
+
+    return BACKGROUND
+
+
+def background(update: Update, context: CallbackContext) -> None:
+    """Stores the backgrounds of the pc and assign them the points."""
+
+    global chosen_backgrounds
+
+    user = update.message.from_user
+    chosen_backgrounds[user.name].append(update.message.text)
+
+    update.message.reply_text(
+        f'Assign points to {chosen_backgrounds[user.name][len(chosen_backgrounds[user.name]) -1]} (max. {background_points}).',
+        reply_markup = ReplyKeyboardRemove()
+    )    
+
+    return ASSIGN_BACKGROUND_POINTS
+
+
+def assign_background_points_asks_again(update) -> None:
+    """Checks if the points assigned are less than background_points."""
+
+    update.message.reply_text(
+        f'Must be less or equal than {background_points}.'
+    )
+
+    return ASSIGN_BACKGROUND_POINTS
+
+
+def assign_background_points(update: Update, context: CallbackContext) -> None:
+    """Stores the background and its points."""
+
+    global background_points
+
+    user = update.message.from_user
+
+    if int(update.message.text) > background_points:
+        update.message.reply_text(
+            f'Must be less or equal than {background_points}.'
+        )
+        
+        return ASSIGN_BACKGROUND_POINTS
+
+    background_points -= int(update.message.text)
+
+    global players
+    players[user.name]['Backgrounds'][chosen_backgrounds[user.name][len(chosen_backgrounds[user.name]) -1]] = int(update.message.text)
+
+    if background_points == 0:
+        write_players_json()
+
+        return ConversationHandler.END
+
+    else:
+        reply_keyboard = []
+        for background in classes.classes[players[user.name]['Class']]['Backgrounds']:
+            if not background in chosen_backgrounds[user.name]:
+                temp_list = [background]
+                reply_keyboard.append(temp_list)
+
+        update.message.reply_text(
+            'Choose another background for your PC.',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the background.'
+            )
+        )
+
+        return BACKGROUND
 
 
 def combat_stats(update: Update, context: CallbackContext) -> None:
@@ -486,6 +617,8 @@ def cancel(update: Update, context: CallbackContext) -> int:
 # Usefull
 def is_the_gm(username: str, update) -> bool:
     """Return true if the user is the gm and sends a message, saying them that they can't play that action."""
+
+    write_players_dict()
 
     if players[username] == 'Game Master':
         update.message.reply_text(
@@ -612,10 +745,10 @@ def extend_abbreviation(abbrevation) -> str:
 
 
 # Roll a die
-def roll_d20() -> int:
-    """Roll a die with 20 faces."""
+def roll_d_n_faces(faces) -> int:
+    """Roll a die with n faces."""
     
-    return random.randint(1,20)
+    return random.randint(1,faces)
 
 
 # Update combat stats
@@ -676,7 +809,7 @@ def update_initiative_bonus(username):
 
     write_players_dict()
 
-    update_players_dict(username, 'IB', roll_d20() + players[username][short_to_long_for_abilities('Dex')] + get_class_level(username))
+    update_players_dict(username, 'IB', roll_d_n_faces(20) + players[username][short_to_long_for_abilities('Dex')] + get_class_level(username))
 
     write_players_json()
 
@@ -717,7 +850,14 @@ def main() -> None:
             ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)],
             ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores)],
             ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_race)],
-            ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_class)]
+            ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_class)],
+            UNIQUE_THING: [MessageHandler(Filters.text, unique_thing)],
+            ICON: [MessageHandler(Filters.regex(accettable_elements(icons.icons)), icon)],
+            BACKGROUND: [MessageHandler(Filters.regex(accettable_elements(
+                list(set(classes.classes['Barbarian']['Backgrounds']) | set(classes.classes['Bard']['Backgrounds']) | set(classes.classes['Cleric']['Backgrounds']) | 
+                set(classes.classes['Fighter']['Backgrounds']) | set(classes.classes['Paladin']['Backgrounds']) | set(classes.classes['Ranger']['Backgrounds']) | 
+                set(classes.classes['Rogue']['Backgrounds']) | set(classes.classes['Sorcerer']['Backgrounds']) | set(classes.classes['Wizard']['Backgrounds'])))), background)],
+            ASSIGN_BACKGROUND_POINTS: [MessageHandler(Filters.text, assign_background_points)]
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
