@@ -20,7 +20,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 10
-        }
+        },
+        'Backgrounds': ['Clan Champion', 'Caravan Outrider', 'Fur Trapper', 'Mountain Tribeswoman', 'Wasteland Survivalist', 'Gladiator']
     },
     'Bard': {
         'ability score': ['Dex', 'Cha'],
@@ -43,7 +44,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 8
-        }
+        },
+        'Backgrounds': ['Wandering Minstrel', 'Cathedral Musician', 'Court Jester', 'Mercenary', 'Tavern Owner', 'Failed Hedge Wizard', 'Diplomat', 'Spy', 'Royal Taster', 'Caravan Guide', 'Smuggler', 'Battle Skald']
     },
     'Cleric': {
         'ability score': ['Str', 'Wis'],
@@ -66,7 +68,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 8
-        }
+        },
+        'Backgrounds': ['Healer', 'Archivist', 'Military Chaplain', 'Temple Guard', 'Bartender', 'Reformed Thief', 'Dwarven Hierophant', 'Initiate', 'Bishop']
     },
     'Fighter': {
         'ability score': ['Str', 'Con'],
@@ -89,7 +92,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 10
-        }
+        },
+        'Backgrounds': ['Swordmaster', 'Mercenary Captain', 'Sea Raider', 'Shieldwall Spearman', 'Explorer', 'Bouncer', 'Thug', 'City Guardsman', 'Former Gladiator', 'Former Orc Captive', 'Bankrupt Nobleman', 'Duelist', 'Goblin-Hunter']
     },
     'Paladin': {
         'ability score': ['Str', 'Cha'],
@@ -112,7 +116,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 10
-        }
+        },
+        'Backgrounds': ['City Guardsman', 'Combat Medic', 'Bodyguard', 'Outlaw Hunter', 'Inquisitor']
     },
     'Ranger': {
         'ability score': ['Str', 'Dex', 'Wis'],
@@ -135,7 +140,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 8
-        }
+        },
+        'Backgrounds': ['Trackers', 'Bounty Hunters', 'Beast Slayers', 'Woodsy Assassins', 'Orc Slayers', 'Wanderers']
     },
     'Rogue': {
         'ability score': ['Dex', 'Cha'],
@@ -158,7 +164,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 8
-        }
+        },
+        'Backgrounds': ['Street Thug', 'Cat Burglar', 'Diplomat', 'Professional Gambler', 'Courtier', 'Jewel Thief', 'Acrobat', 'Con Artist', 'Bartender', 'Spy Master', 'Pirate', 'Dandy', 'Rat Catcher']
     },
     'Sorcerer': {
         'ability score': ['Cha', 'Con'],
@@ -181,7 +188,8 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 6
-        }
+        },
+        'Backgrounds': ['Tribal Shaman', 'Pirate Captain', 'Spell-Arena Gladiator', 'Failed Wizard', 'Sahuagin Hunter']
     },
     'Wizard': {
         'ability score': ['Int', 'Wis'],
@@ -204,6 +212,7 @@ classes = {
         'Recovery Dice': {
             'times': 1,
             'faces': 6
-        }
+        },
+        'Backgrounds': ['Magical Prodigy', 'Spell Thief', 'Hedge Wizard', 'Transformed Familiar', 'Shi\'s Wizard', 'Royal Poisoner']
     }
 }
