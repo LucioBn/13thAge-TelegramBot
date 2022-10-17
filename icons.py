@@ -1,0 +1,1 @@
+icons = ['Archmage', 'Crusader', 'Diabolist', 'Dwarf King', 'Elf Queen', 'Emperor', 'Great Gold Wyrm', 'High Druid', 'Lich King', 'Orc Lord', 'Priestess', 'Prince of Shadows', 'The Three']
