@@ -720,6 +720,17 @@ def combat_stats(update: Update, context: CallbackContext) -> None:
     )
 
 
+def show_abilities(update: Update, context: CallbackContext) -> None:
+    """Show the abilities with their values."""
+
+    user = update.message.from_user
+
+    update.message.reply_text(
+        f'{ability_with_their_score(user.name)}',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+
 def cancel(update: Update, context: CallbackContext) -> int:
     """Cancels and ends the conversation."""
 
@@ -801,15 +812,19 @@ def from_array_to_str(array) -> str:
 
 
 def ability_with_their_score(username) -> str:
-    s = ''
-    for index, ability in enumerate(abilities.abilities):
-        s += ability + ' is ' + str(players[str(username)][ability]) + ' points'
-        if len(abilities.abilities) == (index + 1):
-            s += '.'
-        else:
-            s += ';\n'
+    if players[username] != None:
+        s = ''
+        for index, ability in enumerate(abilities.abilities):
+            s += ability + ' is ' + str(players[username][ability]) + ' points'
+            if len(abilities.abilities) == (index + 1):
+                s += '.'
+            else:
+                s += ';\n'
+        
+        return s
 
-    return s
+    else:
+        return 'Abilities values ​​not yet assigned.'
 
 
 def write_players_json() -> None:
@@ -990,6 +1005,7 @@ def main() -> None:
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(set_pc_handler)
     dispatcher.add_handler(CommandHandler('combat_stats', combat_stats))
+    dispatcher.add_handler(CommandHandler('abilities', show_abilities))
 
     # Start the Bot
     updater.start_polling()
