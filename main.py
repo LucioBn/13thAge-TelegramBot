@@ -39,7 +39,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 GM = 0
-NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(11)
+NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, ICON_RELATIONSHIP, RELATIONSHIP_VALUE, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(13)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -87,6 +87,9 @@ def gm(update: Update, context: CallbackContext) -> int:
     """Stores if the client is a player or the game master."""
 
     global players
+    global icon_relationship_points
+    global background_points
+
     user = update.message.from_user
 
     if update.message.text == 'Game Master':
@@ -94,6 +97,9 @@ def gm(update: Update, context: CallbackContext) -> int:
             for username in players.keys():
                 if players[username] == 'Game Master':
                     players[user.name] = None
+                    icon_relationship_points[user.name] = 3
+                    background_points[user.name] = 8
+
                     update.message.reply_text(
                         'Unfortunately you were too slow, someone stole the role of game master. So... You will be a player!'
                         '\nWhen you\'re ready to set your PC (playable character), send the command /set_pc.',
@@ -109,6 +115,9 @@ def gm(update: Update, context: CallbackContext) -> int:
         )
     else:
         players[user.name] = None
+        icon_relationship_points[user.name] = 3
+        background_points[user.name] = 8
+
         update.message.reply_text(
             'When you\'re ready to set your PC (playable character), send the command /set_pc.',
             reply_markup = ReplyKeyboardRemove()
@@ -444,56 +453,156 @@ def ability_scores_from_class(update: Update, context: CallbackContext) -> int:
     return UNIQUE_THING
 
 
+chosen_icon = {}
+
+
 def unique_thing(update: Update, context: CallbackContext) -> None:
-    """Store the player unique thing."""
+    """Store the player unique thingand asks for the first
+    (possibly only) icon to determine the relationship with."""
 
     user = update.message.from_user
     update_players_dict(user.name, 'Unique', update.message.text)
 
+    global chosen_icon
+    chosen_icon[user.name] = []
+
     reply_keyboard = []
-    for icon in icons.icons:
-        temp_list = [icon]
+    for key in icons.icons.keys():
+        temp_list = [key]
         reply_keyboard.append(temp_list)
 
     update.message.reply_text(
-        'Determine your icon relationships.',
+        'You have 3 points to determine the relationship with one or more icons.\n'
+        'Choose the icon with whom you want to determine the relationship.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the icon.'
+        )
+    )
+
+    global players
+    players[user.name]["Relations with the icons"] = {}
+
+    return ICON
+
+
+def icon(update: Update, context: CallbackContext) -> None:
+    """Stores the icon chosen by the player and asks which type of relatioship the PC has with the chosen icon."""
+
+    global players
+    global icon_relationship_points
+    global chosen_icon
+
+    user = update.message.from_user
+    chosen_icon[user.name].append(update.message.text)
+    players[user.name]["Relations with the icons"][update.message.text] = {}
+
+    reply_keyboard = [
+        ['Positive'],
+        ['Conflicted'],
+        ['Negative']
+    ]
+    
+    def max_expense(num) -> int:
+        if num < icon_relationship_points[user.name]:
+            return num
+        else:
+            return icon_relationship_points[user.name]
+
+    update.message.reply_text(
+            f'Choose if you want assign points to a positive (max {max_expense(icons.icons[chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]["Positive"])}), '
+            f'conflicted (max {max_expense(icons.icons[chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]["Conflicted"])}) or negative '
+            f'(max {max_expense(icons.icons[chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]["Negative"])}) relation with {chosen_icon[user.name][len(chosen_icon[user.name]) - 1]} icon.',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose which type of relationship.'
+            )
+        )
+
+    return ICON_RELATIONSHIP
+
+
+chosen_backgrounds = {}
+
+
+def icon_relationship(update: Update, context: CallbackContext) -> None:
+    """Stores the type of relatioship the PC has with the chosen icon and asks to assign a value."""
+
+    global players
+
+    user = update.message.from_user
+    players[user.name]["Relations with the icons"][chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]['Type'] = update.message.text
+
+    def max_expense(num) -> int:
+        if num < icon_relationship_points[user.name]:
+            return num
+        else:
+            return icon_relationship_points[user.name]
+    
+    reply_keyboard = []
+    value = max_expense(int(icons.icons[chosen_icon[user.name][len(chosen_icon[user.name]) - 1]][players[user.name]["Relations with the icons"][chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]["Type"]]))
+    while(value != 0):
+        reply_keyboard.append([value])
+        value -= 1
+
+    update.message.reply_text(
+        f'Your PC has a {players[user.name]["Relations with the icons"][chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]["Type"].lower()}'
+        f' relation with the {chosen_icon[user.name][len(chosen_icon[user.name]) - 1]} icon.\n'
+        f'You can assign max {icons.icons[chosen_icon[user.name][len(chosen_icon[user.name]) - 1]][players[user.name]["Relations with the icons"][chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]["Type"]]} points.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the value to assign.'
+        )
+    )
+
+    return RELATIONSHIP_VALUE
+
+
+def relationship_value(update: Update, context: CallbackContext) -> None:
+    """Stores the value of the relationship after checking it (if wrong call icon_relationship()) and if relationship points
+    with the icons are all assigned asks for the pc's background, else asks another icon to determine the relationship with."""
+
+    global players
+
+    user = update.message.from_user
+
+    if int(update.message.text) > icons.icons[chosen_icon[user.name][len(chosen_icon[user.name]) - 1]][players[user.name]["Relations with the icons"][chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]['Type']]:
+        return ICON_RELATIONSHIP
+
+    icon_relationship_points[user.name] -= int(update.message.text)
+    players[user.name]["Relations with the icons"][chosen_icon[user.name][len(chosen_icon[user.name]) - 1]]['Value'] = int(update.message.text)
+
+    if icon_relationship_points[user.name] == 0:
+        chosen_backgrounds[user.name] = []
+
+        reply_keyboard = []
+        for background in classes.classes[players[user.name]['Class']]['Backgrounds']:
+            temp_list = [background]
+            reply_keyboard.append(temp_list)
+
+        update.message.reply_text(
+            'Choose the background of your PC.',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the background.'
+            )
+        )
+
+        players[user.name]['Backgrounds'] = {}
+
+        return BACKGROUND
+
+    reply_keyboard = []
+    for key in icons.icons.keys():
+        if not key in chosen_icon[user.name]:
+            temp_list = [key]
+            reply_keyboard.append(temp_list)
+
+    update.message.reply_text(
+        f'You have {icon_relationship_points[user.name]} points to determine the relationship others icons.\n'
+        'Choose the icon with whom you want to determine the relationship.',
         reply_markup = ReplyKeyboardMarkup(
             reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the icon.'
         )
     )
 
     return ICON
-
-
-background_points = 8
-chosen_backgrounds = {}
-
-
-def icon(update: Update, context: CallbackContext) -> None:
-    """Stores the icon chosen by the player and asks for the pc's background."""
-
-    global players
-
-    user = update.message.from_user
-    update_players_dict(user.name, 'Icon', update.message.text)
-
-    chosen_backgrounds[user.name] = []
-
-    reply_keyboard = []
-    for background in classes.classes[players[user.name]['Class']]['Backgrounds']:
-        temp_list = [background]
-        reply_keyboard.append(temp_list)
-
-    update.message.reply_text(
-        'Choose the background of your PC.',
-        reply_markup = ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the background.'
-        )
-    )
-
-    players[user.name]['Backgrounds'] = {}
-
-    return BACKGROUND
 
 
 def background(update: Update, context: CallbackContext) -> None:
@@ -503,10 +612,18 @@ def background(update: Update, context: CallbackContext) -> None:
 
     user = update.message.from_user
     chosen_backgrounds[user.name].append(update.message.text)
+    
+    reply_keyboard = []
+    value = background_points[user.name]
+    while(value != 0):
+        reply_keyboard.append([value])
+        value -= 1
 
     update.message.reply_text(
-        f'Assign points to {chosen_backgrounds[user.name][len(chosen_backgrounds[user.name]) -1]} (max. {background_points}).',
-        reply_markup = ReplyKeyboardRemove()
+        f'Assign points to {chosen_backgrounds[user.name][len(chosen_backgrounds[user.name]) -1]} background (max. {background_points[user.name]}).',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the value.'
+        )
     )    
 
     return ASSIGN_BACKGROUND_POINTS
@@ -516,7 +633,8 @@ def assign_background_points_asks_again(update) -> None:
     """Checks if the points assigned are less than background_points."""
 
     update.message.reply_text(
-        f'Must be less or equal than {background_points}.'
+        f'Must be less or equal than {background_points[user.name]}.',
+        reply_markup = ReplyKeyboardRemove()
     )
 
     return ASSIGN_BACKGROUND_POINTS
@@ -529,19 +647,20 @@ def assign_background_points(update: Update, context: CallbackContext) -> None:
 
     user = update.message.from_user
 
-    if int(update.message.text) > background_points:
+    if int(update.message.text) > background_points[user.name]:
         update.message.reply_text(
-            f'Must be less or equal than {background_points}.'
+            f'Must be less or equal than {background_points[user.name]}.',
+            reply_markup = ReplyKeyboardRemove()
         )
         
         return ASSIGN_BACKGROUND_POINTS
 
-    background_points -= int(update.message.text)
+    background_points[user.name] -= int(update.message.text)
 
     global players
     players[user.name]['Backgrounds'][chosen_backgrounds[user.name][len(chosen_backgrounds[user.name]) -1]] = int(update.message.text)
 
-    if background_points == 0:
+    if background_points[user.name] == 0:
         write_players_json()
 
         return ConversationHandler.END
@@ -725,13 +844,13 @@ def get_mid_value(list: list) -> int:
     for value in list:
         sum += value
 
-    return float_with_two_decimal_places(sum / len(list))
+    return rounded_in_integer(sum / len(list))
 
 
-def float_with_two_decimal_places(value) -> float:
-    """Returns the value with only two decimal"""
+def rounded_in_integer(value) -> int:
+    """Returns the int value rounded."""
 
-    return round(value, 2)
+    return round(value)
 
 
 def extend_abbreviation(abbrevation) -> str:
@@ -822,6 +941,10 @@ first = True
 username = ''
 players = {}
 
+icon_relationship_points = {}
+background_points = {}
+
+
 def main() -> None:
     """Run the bot."""
     # Create the Updater and pass it your bot's token.
@@ -853,11 +976,13 @@ def main() -> None:
             ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_class)],
             UNIQUE_THING: [MessageHandler(Filters.text, unique_thing)],
             ICON: [MessageHandler(Filters.regex(accettable_elements(icons.icons)), icon)],
+            ICON_RELATIONSHIP: [MessageHandler(Filters.regex('^(Positive|Conflicted|Negative)$'), icon_relationship)],
+            RELATIONSHIP_VALUE: [MessageHandler(Filters.regex('^(1|2|3)$'), relationship_value)],
             BACKGROUND: [MessageHandler(Filters.regex(accettable_elements(
                 list(set(classes.classes['Barbarian']['Backgrounds']) | set(classes.classes['Bard']['Backgrounds']) | set(classes.classes['Cleric']['Backgrounds']) | 
                 set(classes.classes['Fighter']['Backgrounds']) | set(classes.classes['Paladin']['Backgrounds']) | set(classes.classes['Ranger']['Backgrounds']) | 
                 set(classes.classes['Rogue']['Backgrounds']) | set(classes.classes['Sorcerer']['Backgrounds']) | set(classes.classes['Wizard']['Backgrounds'])))), background)],
-            ASSIGN_BACKGROUND_POINTS: [MessageHandler(Filters.text, assign_background_points)]
+            ASSIGN_BACKGROUND_POINTS: [MessageHandler(Filters.regex('^(1|2|3|4|5|6|7|8)$'), assign_background_points)]
         },
         fallbacks=[CommandHandler('cancel', cancel)]
     )
