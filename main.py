@@ -42,6 +42,9 @@ GM = 0
 NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, ICON_RELATIONSHIP, RELATIONSHIP_VALUE, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(13)
 COMBAT_STATS = 0
 SHOW_ABILITIES = 0
+SHOW_UNIQUE_THING = 0
+SHOW_ICONS_RELATIONSHIPS = 0
+SHOW_BACKROUNDS = 0
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -667,6 +670,11 @@ def assign_background_points(update: Update, context: CallbackContext) -> int:
     if background_points[user.name] == 0:
         write_players_json()
 
+        update.message.reply_text(
+            'Your PC has been set.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
         return ConversationHandler.END
 
     else:
@@ -703,6 +711,12 @@ def who(update: Update, context: CallbackContext) -> int:
             return 'combat stats'
         if command == '/abilities':
             return 'abilities stats'
+        if command == '/unique_thing':
+            return 'unique thing'
+        if command == '/icons_relationships':
+            return "icons's relationships"
+        if command == '/backgrounds':
+            return "backgrounds"
 
     update.message.reply_text(
         f'Tap in a PC\'s name or write a player name to know his PC\'s {request(command)}.',
@@ -715,6 +729,12 @@ def who(update: Update, context: CallbackContext) -> int:
         return COMBAT_STATS
     if command == '/abilities':
         return SHOW_ABILITIES
+    if command == '/unique_thing':
+        return SHOW_UNIQUE_THING
+    if command == '/icons_relationships':
+        return SHOW_ICONS_RELATIONSHIPS
+    if command == '/backgrounds':
+        return SHOW_BACKROUNDS
 
 
 def combat_stats(update: Update, context: CallbackContext) -> int:
@@ -735,7 +755,7 @@ def combat_stats(update: Update, context: CallbackContext) -> int:
     def message() -> str:
         """Create the message to send (only for combat_stats)."""
 
-        s = players[nickname]['PC\'s name'] + ' (' + nickname + "'s PC):\n"
+        s = players[nickname]["PC's name"] + "'s combat stats (" + nickname + "'s PC):\n"
         if 'HP' in players[nickname].keys():
             s += f'{extend_abbreviation("HP")} -> {players[nickname]["HP"]}\n'
         if 'AC' in players[nickname].keys():
@@ -750,21 +770,82 @@ def combat_stats(update: Update, context: CallbackContext) -> int:
         return s
 
     context.bot.send_message(chat_id = update.effective_chat.id,
-        text  = message()
+        text = message()
     )
 
     return ConversationHandler.END
 
 
 def show_abilities(update: Update, context: CallbackContext) -> int:
-    """Show the abilities with their values."""
+    """Shows the abilities with their values."""
 
     user = update.message.from_user
 
     nickname = who_nickname(update.message.text, update)
 
     context.bot.send_message(chat_id = update.effective_chat.id,
-        text  = players[nickname]["PC\'s name"] + ' (' + nickname + "'s PC):\n" + ability_with_their_score(nickname)
+        text  = players[nickname]["PC's name"] + "'s abilities (" + nickname + "'s PC):\n" + ability_with_their_score(nickname)
+    )
+
+    return ConversationHandler.END
+
+
+def show_unique_thing(update: Update, context: CallbackContext) -> int:
+    """Shows the unique thing."""
+
+    user = update.message.from_user
+
+    nickname = who_nickname(update.message.text, update)
+
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text  = players[nickname]["PC's name"] + "'s unique thing (" + nickname + "'s PC):\n" + players[nickname]["Unique"]
+    )
+
+    return ConversationHandler.END
+
+
+def show_icons_relationships(update: Update, context: CallbackContext) -> int:
+    """Shows the icons's relationships."""
+
+    user = update.message.from_user
+
+    nickname = who_nickname(update.message.text, update)
+
+    def message() -> str:
+        """Create the message to send (only for show_icons_relationships)."""
+
+        s = ''
+        for icon in players[nickname]["Relations with the icons"].keys():
+            s += '\n' + icon + " -> " + players[nickname]["Relations with the icons"][icon]['Type'] + ' -> ' + str(players[nickname]["Relations with the icons"][icon]['Value'])
+
+        return s
+    
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text = players[nickname]["PC's name"] + "'s icons's relationships (" + nickname + "'s PC):" + message()
+    )
+
+    return ConversationHandler.END
+
+
+def show_backgrounds(update: Update, context: CallbackContext) -> int:
+    """Shows the backgrounds's."""
+
+    user = update.message.from_user
+
+    nickname = who_nickname(update.message.text, update)
+
+    def message() -> str:
+        """Create the message to send (only for show_backgrounds)."""
+
+        s = ''
+        for background in players[nickname]["Backgrounds"].keys():
+            s += '\n' + background + " -> " + str(players[nickname]["Backgrounds"][background])
+
+        return s
+
+
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text = str(players[nickname]["PC's name"]) + "'s backgrounds's (" + str(nickname) + "'s PC):" + message()
     )
 
     return ConversationHandler.END
@@ -922,7 +1003,7 @@ def roll_d_n_faces(faces) -> int:
     return random.randint(1,faces)
 
 
-def who_nickname(name, update) -> str:
+def who_nickname(name, update):
     """Returns the nickname of the player that created the PC."""
 
     if name in players.keys() or '@' + name in players.keys():
@@ -1075,10 +1156,37 @@ def main() -> None:
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
+    show_unique_thing_handler = ConversationHandler(
+        entry_points = [CommandHandler('unique_thing', who)],
+        states = {
+            SHOW_UNIQUE_THING: [MessageHandler(Filters.text, show_unique_thing)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
+    show_icons_relationships_handler = ConversationHandler(
+        entry_points = [CommandHandler('icons_relationships', who)],
+        states = {
+            SHOW_ICONS_RELATIONSHIPS: [MessageHandler(Filters.text, show_icons_relationships)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
+    show_backgrounds_handler = ConversationHandler(
+        entry_points = [CommandHandler('backgrounds', who)],
+        states = {
+            SHOW_BACKROUNDS: [MessageHandler(Filters.text, show_backgrounds)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(set_pc_handler)
     dispatcher.add_handler(combat_stats_handler)
     dispatcher.add_handler(show_abilities_handler)
+    dispatcher.add_handler(show_unique_thing_handler)
+    dispatcher.add_handler(show_icons_relationships_handler)
+    dispatcher.add_handler(show_backgrounds_handler)
 
     # Start the Bot
     updater.start_polling()
