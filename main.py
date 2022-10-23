@@ -49,7 +49,22 @@ SHOW_BACKROUNDS = 0
 
 
 def start(update: Update, context: CallbackContext) -> int:
+    """Starts the conversation and explains some functions."""
+    
+    update.message.reply_text(
+        'Welcome, I\'m the bot that will help you to play 13th Age!',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
+
+def join_game(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks to choose a name for the PC."""
+
+    global players
+    global icon_relationship_points
+    global background_points
 
     user = update.message.from_user
 
@@ -57,8 +72,7 @@ def start(update: Update, context: CallbackContext) -> int:
         for username in players.keys():
             if players[username] == 'Game Master':
                 update.message.reply_text(
-                    f'Hi {user.name}, I\'m the bot that will help you to play 13th Age! '
-                    'Send /cancel to stop talking to me.\n\n'
+                    f'Hi {user.name}.\n'
                     'The match already have a game master, you must be a player.'
                 )
 
@@ -82,8 +96,7 @@ def start(update: Update, context: CallbackContext) -> int:
     ]
 
     update.message.reply_text(
-        f'Hi {user.name}, I\'m the bot that will help you to play 13th Age! '
-        'Send /cancel to stop talking to me.\n\n'
+        f'Hi {user.name}.\n'
         'Are you a player or the game master?',
         reply_markup = ReplyKeyboardMarkup(
             reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Player or GM?'
@@ -173,7 +186,7 @@ def set_game(update: Update, context: CallbackContext) -> int:
 max_num_of_players: int
 
 
-def pc(update: Update, context: CallbackContext) -> int:
+def num_limit_of_pcs(update: Update, context: CallbackContext) -> int:
     """Stores how many PCs can join the game and asks the size of the inventory."""
 
     global max_num_of_players
@@ -269,6 +282,14 @@ def set_pc(update: Update, context: CallbackContext) -> int:
     global num_of_players
     num_of_players += 1
 
+    global players
+    players[user.name] = {}
+    players[user.name]["Inventory"] = {}
+    i = 0
+    while i != inventory_size:
+        players[user.name]['Inventory']['Item ' + str(i + 1)] = None
+        i += 1
+
     if is_the_gm(user.name, update):
         return ConversationHandler.END
 
@@ -288,7 +309,6 @@ def name(update: Update, context: CallbackContext) -> int:
         reply_keyboard.append(temp_list)
 
     user = update.message.from_user
-    players[user.name] = {}
     update_players_dict(user.name, "PC's name", update.message.text)
     set_abilities(user.name)
 
@@ -1000,6 +1020,21 @@ def cancel(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+def reset(update: Update, context: CallbackContext) -> int:
+    """Resets the game."""
+
+    global players
+    players = {}
+
+    write_players_json()
+
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text = 'The game has been reset.'
+    )
+
+    return ConversationHandler.END
+
+
 # Usefull
 def is_the_gm(username: str, update) -> bool:
     """Return true if the user is the gm and sends a message, saying them that they can't play that action."""
@@ -1245,8 +1280,8 @@ def main() -> None:
     dispatcher = updater.dispatcher
 
     # Conversation handlers
-    start_handler = ConversationHandler(
-        entry_points = [CommandHandler('start', start)],
+    join_game_handler = ConversationHandler(
+        entry_points = [CommandHandler('join_game', join_game)],
         states = {
             GM: [MessageHandler(Filters.regex('^(Player|Game Master)$') & (~ Filters.command), gm)]
         },
@@ -1256,7 +1291,7 @@ def main() -> None:
     set_game_handler = ConversationHandler(
         entry_points = [CommandHandler('set_game', set_game)],
         states = {
-            PC: [MessageHandler(Filters.text & (~ Filters.command), pc)],
+            PC: [MessageHandler(Filters.text & (~ Filters.command), num_limit_of_pcs)],
             INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), inventory)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
@@ -1325,7 +1360,8 @@ def main() -> None:
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
-    dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(join_game_handler)
     dispatcher.add_handler(set_game_handler)
     dispatcher.add_handler(set_pc_handler)
     dispatcher.add_handler(combat_stats_handler)
@@ -1333,6 +1369,7 @@ def main() -> None:
     dispatcher.add_handler(show_unique_thing_handler)
     dispatcher.add_handler(show_icons_relationships_handler)
     dispatcher.add_handler(show_backgrounds_handler)
+    dispatcher.add_handler(CommandHandler("reset", reset))
 
     # Start the Bot
     updater.start_polling()
