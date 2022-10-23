@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 GM = 0
 NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, ICON_RELATIONSHIP, RELATIONSHIP_VALUE, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(13)
+COMBAT_STATS = 0
+SHOW_ABILITIES = 0
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -132,7 +134,7 @@ def set_pc(update: Update, context: CallbackContext) -> int:
     """Asks to set the name of the PC."""
 
     user = update.message.from_user
-    write_players_dict()
+    # write_players_dict()
 
     if is_the_gm(user.name, update):
         return ConversationHandler.END
@@ -456,7 +458,7 @@ def ability_scores_from_class(update: Update, context: CallbackContext) -> int:
 chosen_icon = {}
 
 
-def unique_thing(update: Update, context: CallbackContext) -> None:
+def unique_thing(update: Update, context: CallbackContext) -> int:
     """Store the player unique thingand asks for the first
     (possibly only) icon to determine the relationship with."""
 
@@ -485,7 +487,7 @@ def unique_thing(update: Update, context: CallbackContext) -> None:
     return ICON
 
 
-def icon(update: Update, context: CallbackContext) -> None:
+def icon(update: Update, context: CallbackContext) -> int:
     """Stores the icon chosen by the player and asks which type of relatioship the PC has with the chosen icon."""
 
     global players
@@ -523,7 +525,7 @@ def icon(update: Update, context: CallbackContext) -> None:
 chosen_backgrounds = {}
 
 
-def icon_relationship(update: Update, context: CallbackContext) -> None:
+def icon_relationship(update: Update, context: CallbackContext) -> int:
     """Stores the type of relatioship the PC has with the chosen icon and asks to assign a value."""
 
     global players
@@ -555,7 +557,7 @@ def icon_relationship(update: Update, context: CallbackContext) -> None:
     return RELATIONSHIP_VALUE
 
 
-def relationship_value(update: Update, context: CallbackContext) -> None:
+def relationship_value(update: Update, context: CallbackContext) -> int:
     """Stores the value of the relationship after checking it (if wrong call icon_relationship()) and if relationship points
     with the icons are all assigned asks for the pc's background, else asks another icon to determine the relationship with."""
 
@@ -605,7 +607,7 @@ def relationship_value(update: Update, context: CallbackContext) -> None:
     return ICON
 
 
-def background(update: Update, context: CallbackContext) -> None:
+def background(update: Update, context: CallbackContext) -> int:
     """Stores the backgrounds of the pc and assign them the points."""
 
     global chosen_backgrounds
@@ -629,8 +631,10 @@ def background(update: Update, context: CallbackContext) -> None:
     return ASSIGN_BACKGROUND_POINTS
 
 
-def assign_background_points_asks_again(update) -> None:
+def assign_background_points_asks_again(update) -> int:
     """Checks if the points assigned are less than background_points."""
+
+    user = update.message.from_user
 
     update.message.reply_text(
         f'Must be less or equal than {background_points[user.name]}.',
@@ -640,7 +644,7 @@ def assign_background_points_asks_again(update) -> None:
     return ASSIGN_BACKGROUND_POINTS
 
 
-def assign_background_points(update: Update, context: CallbackContext) -> None:
+def assign_background_points(update: Update, context: CallbackContext) -> int:
     """Stores the background and its points."""
 
     global background_points
@@ -682,36 +686,66 @@ def assign_background_points(update: Update, context: CallbackContext) -> None:
         return BACKGROUND
 
 
-def combat_stats(update: Update, context: CallbackContext) -> None:
+def who(update: Update, context: CallbackContext) -> int:
+    """Asks for who you want to see the stats."""
+
+    user = update.message.from_user
+
+    command = update.message.text
+
+    reply_keyboard = []
+    for nickname in players.keys():
+        if "PC's name" in players[nickname]:
+            reply_keyboard.append([players[nickname]["PC's name"]])
+
+    def request(command) -> str:
+        if command == '/combat_stats':
+            return 'combat stats'
+        if command == '/abilities':
+            return 'abilities stats'
+
+    update.message.reply_text(
+        f'Tap in a PC\'s name or write a player name to know his PC\'s {request(command)}.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the PC\'s name.'
+        )
+    )
+
+    if command == '/combat_stats':
+        return COMBAT_STATS
+    if command == '/abilities':
+        return SHOW_ABILITIES
+
+
+def combat_stats(update: Update, context: CallbackContext) -> int:
     """Calculates and shows the combat stats."""
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
-        return ConversationHandler.END
+    nickname = who_nickname(update.message.text, update)
 
-    update_hp_in_persons(user.name)
-    update_ac_in_persons(user.name)
-    update_pd_in_persons(user.name)
-    update_md_in_persons(user.name)
-    update_initiative_bonus(user.name)
+    update_hp_in_persons(nickname)
+    update_ac_in_persons(nickname)
+    update_pd_in_persons(nickname)
+    update_md_in_persons(nickname)
+    update_initiative_bonus(nickname)
     
-    write_players_dict()
+    # write_players_dict()
 
     def message() -> str:
         """Create the message to send (only for combat_stats)."""
 
-        s = ''
-        if 'HP' in players[user.name].keys():
-            s += f'{extend_abbreviation("HP")} -> {players[user.name]["HP"]}\n'
-        if 'AC' in players[user.name].keys():
-            s += f'{extend_abbreviation("AC")}:\n- None -> {players[user.name]["AC"]["None"]}\n- Light -> {players[user.name]["AC"]["Light"]}\n- Heavy -> {players[user.name]["AC"]["Heavy"]}\n'
-        if 'PD' in players[user.name].keys():
-            s += f'{extend_abbreviation("PD")} -> {players[user.name]["PD"]}\n'
-        if 'MD' in players[user.name].keys():
-            s += f'{extend_abbreviation("MD")} -> {players[user.name]["MD"]}\n'
-        if 'IB' in players[user.name].keys():
-            s += f'{extend_abbreviation("IB")} -> {players[user.name]["IB"]}\n'
+        s = players[nickname]['PC\'s name'] + ' (' + nickname + "'s PC):\n"
+        if 'HP' in players[nickname].keys():
+            s += f'{extend_abbreviation("HP")} -> {players[nickname]["HP"]}\n'
+        if 'AC' in players[nickname].keys():
+            s += f'{extend_abbreviation("AC")}:\n- None -> {players[nickname]["AC"]["None"]}\n- Light -> {players[nickname]["AC"]["Light"]}\n- Heavy -> {players[nickname]["AC"]["Heavy"]}\n'
+        if 'PD' in players[nickname].keys():
+            s += f'{extend_abbreviation("PD")} -> {players[nickname]["PD"]}\n'
+        if 'MD' in players[nickname].keys():
+            s += f'{extend_abbreviation("MD")} -> {players[nickname]["MD"]}\n'
+        if 'IB' in players[nickname].keys():
+            s += f'{extend_abbreviation("IB")} -> {players[nickname]["IB"]}\n'
 
         return s
 
@@ -719,16 +753,21 @@ def combat_stats(update: Update, context: CallbackContext) -> None:
         text  = message()
     )
 
+    return ConversationHandler.END
 
-def show_abilities(update: Update, context: CallbackContext) -> None:
+
+def show_abilities(update: Update, context: CallbackContext) -> int:
     """Show the abilities with their values."""
 
     user = update.message.from_user
 
-    update.message.reply_text(
-        f'{ability_with_their_score(user.name)}',
-        reply_markup = ReplyKeyboardRemove()
+    nickname = who_nickname(update.message.text, update)
+
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text  = players[nickname]["PC\'s name"] + ' (' + nickname + "'s PC):\n" + ability_with_their_score(nickname)
     )
+
+    return ConversationHandler.END
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -748,7 +787,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
 def is_the_gm(username: str, update) -> bool:
     """Return true if the user is the gm and sends a message, saying them that they can't play that action."""
 
-    write_players_dict()
+    # write_players_dict()
 
     if players[username] == 'Game Master':
         update.message.reply_text(
@@ -815,16 +854,14 @@ def ability_with_their_score(username) -> str:
     if players[username] != None:
         s = ''
         for index, ability in enumerate(abilities.abilities):
-            s += ability + ' is ' + str(players[username][ability]) + ' points'
-            if len(abilities.abilities) == (index + 1):
-                s += '.'
-            else:
-                s += ';\n'
+            s += ability + ' -> ' + str(players[username][ability])
+            if len(abilities.abilities) != (index + 1):
+                s += '\n'
         
         return s
 
     else:
-        return 'Abilities values ​​not yet assigned.'
+        return 'Abilities values not yet assigned.'
 
 
 def write_players_json() -> None:
@@ -885,11 +922,31 @@ def roll_d_n_faces(faces) -> int:
     return random.randint(1,faces)
 
 
+def who_nickname(name, update) -> str:
+    """Returns the nickname of the player that created the PC."""
+
+    if name in players.keys() or '@' + name in players.keys():
+        if not '@' in name:
+            return '@' + name
+        return name
+
+    for nickname in players.keys():
+        if name == players[nickname]["PC's name"]:
+            return nickname
+
+    update.message.reply_text(
+        f'None PC\'s name or player\'s name is {nickname}.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
+
 # Update combat stats
 def update_hp_in_persons(username):
     """Update hp in persons.json for that specific user."""
 
-    write_players_dict()
+    # write_players_dict()
     update_players_dict(username, 'HP', (classes.classes[players[username]['Class']]['HP'] + players[username][short_to_long_for_abilities('Con')]) * 3)
     write_players_json()
 
@@ -899,7 +956,7 @@ def update_ac_in_persons(username):
 
     def update_ac_in_person_detailed(username, key):
         modifier = get_mid_value([players[username][short_to_long_for_abilities('Con')], players[username][short_to_long_for_abilities('Dex')], players[username][short_to_long_for_abilities('Wis')]])
-        write_players_dict()
+        # write_players_dict()
         
         if not 'AC' in players[username].keys():
             players[username]['AC'] = {}
@@ -919,7 +976,7 @@ def update_ac_in_persons(username):
 def update_pd_in_persons(username):
     """Update pd in persons.json for that specific user."""
 
-    write_players_dict()
+    # write_players_dict()
 
     modifier = get_mid_value([players[username][short_to_long_for_abilities('Str')], players[username][short_to_long_for_abilities('Con')], players[username][short_to_long_for_abilities('Dex')]])
     update_players_dict(username, 'PD', classes.classes[players[username]['Class']]['PD'] + modifier + get_class_level(username))
@@ -930,7 +987,7 @@ def update_pd_in_persons(username):
 def update_md_in_persons(username):
     """Update md in persons.json for that specific user."""
 
-    write_players_dict()
+    # write_players_dict()
 
     modifier = get_mid_value([players[username][short_to_long_for_abilities('Int')], players[username][short_to_long_for_abilities('Wis')], players[username][short_to_long_for_abilities('Cha')]])
     update_players_dict(username, 'MD', classes.classes[players[username]['Class']]['MD'] + modifier + get_class_level(username))
@@ -941,7 +998,7 @@ def update_md_in_persons(username):
 def update_initiative_bonus(username):
     """Update md in persons.json for that specific user."""
 
-    write_players_dict()
+    # write_players_dict()
 
     update_players_dict(username, 'IB', roll_d_n_faces(20) + players[username][short_to_long_for_abilities('Dex')] + get_class_level(username))
 
@@ -976,7 +1033,7 @@ def main() -> None:
         states = {
             GM: [MessageHandler(Filters.regex('^(Player|Game Master)$'), gm)]
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks = [CommandHandler('cancel', cancel)]
     )
 
     set_pc_handler = ConversationHandler(
@@ -999,13 +1056,29 @@ def main() -> None:
                 set(classes.classes['Rogue']['Backgrounds']) | set(classes.classes['Sorcerer']['Backgrounds']) | set(classes.classes['Wizard']['Backgrounds'])))), background)],
             ASSIGN_BACKGROUND_POINTS: [MessageHandler(Filters.regex('^(1|2|3|4|5|6|7|8)$'), assign_background_points)]
         },
-        fallbacks=[CommandHandler('cancel', cancel)]
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
+    combat_stats_handler = ConversationHandler(
+        entry_points = [CommandHandler('combat_stats', who)],
+        states = {
+            COMBAT_STATS: [MessageHandler(Filters.text, combat_stats)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
+    show_abilities_handler = ConversationHandler(
+        entry_points = [CommandHandler('abilities', who)],
+        states = {
+            SHOW_ABILITIES: [MessageHandler(Filters.text, show_abilities)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
     )
 
     dispatcher.add_handler(start_handler)
     dispatcher.add_handler(set_pc_handler)
-    dispatcher.add_handler(CommandHandler('combat_stats', combat_stats))
-    dispatcher.add_handler(CommandHandler('abilities', show_abilities))
+    dispatcher.add_handler(combat_stats_handler)
+    dispatcher.add_handler(show_abilities_handler)
 
     # Start the Bot
     updater.start_polling()
