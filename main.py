@@ -39,6 +39,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 GM = 0
+PC, INVENTORY = range(2)
 NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, ICON_RELATIONSHIP, RELATIONSHIP_VALUE, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(13)
 COMBAT_STATS = 0
 SHOW_ABILITIES = 0
@@ -66,6 +67,10 @@ def start(update: Update, context: CallbackContext) -> int:
                     'When you\'re ready to set your PC (playable character), send the command /set_pc.',
                     reply_markup = ReplyKeyboardRemove()
                 )
+
+                players[user.name] = None
+                icon_relationship_points[user.name] = 3
+                background_points[user.name] = 8
 
                 write_players_json()
 
@@ -115,7 +120,7 @@ def gm(update: Update, context: CallbackContext) -> int:
 
         players[user.name] = 'Game Master'
         update.message.reply_text(
-            'You are the game master.',
+            'You are the game master. When you\'re ready to set the game, send the command /set_game.',
             reply_markup = ReplyKeyboardRemove()
         )
     else:
@@ -133,11 +138,136 @@ def gm(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+game_has_been_set = False
+
+
+def set_game(update: Update, context: CallbackContext) -> int:
+    """Asks to choose how many players can join the game."""
+
+    if game_has_been_set:
+        update.message.reply_text(
+            'The game has been already set.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    user = update.message.from_user
+
+    if not is_the_gm(user.name, update):
+        update.message.reply_text(
+            'Only the GM can set the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+    
+    update.message.reply_text(
+        'Set a limit of PCs that can join the game.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return PC
+
+
+max_num_of_players: int
+
+
+def pc(update: Update, context: CallbackContext) -> int:
+    """Stores how many PCs can join the game and asks the size of the inventory."""
+
+    global max_num_of_players
+
+    user = update.message.from_user
+
+    try:
+        max_num_of_players = int(update.message.text)
+
+        if max_num_of_players < 2:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return PC
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more than 1.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return PC
+
+    update.message.reply_text(
+        'How many items can the inventory contain?',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return INVENTORY
+
+
+inventory_size = 0
+
+
+def inventory(update: Update, context: CallbackContext) -> int:
+    """Stores the size of the inventory and ends the conversation."""
+
+    global inventory_size
+
+    user = update.message.from_user
+
+    try:
+        inventory_size = int(update.message.text)
+
+        if inventory_size < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return INVENTORY
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return INVENTORY
+
+    update.message.reply_text(
+        'Game has been set.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    global game_has_been_set
+    game_has_been_set = True
+
+    return ConversationHandler.END
+
+
+num_of_players = 0
+
+
 def set_pc(update: Update, context: CallbackContext) -> int:
     """Asks to set the name of the PC."""
 
+    if not game_has_been_set:
+        update.message.reply_text(
+            'The game has not been set. Ask the GM to set it.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
     user = update.message.from_user
     # write_players_dict()
+
+    global num_of_players
+    num_of_players += 1
 
     if is_the_gm(user.name, update):
         return ConversationHandler.END
@@ -699,6 +829,14 @@ def who(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
+    if len(players.keys()) == 0:
+        update.message.reply_text(
+            'No players joined yet the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
     command = update.message.text
 
     reply_keyboard = []
@@ -857,8 +995,7 @@ def cancel(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
     logger.info(f"User {user.first_name} canceled the conversation.")
     update.message.reply_text(
-        'Bye! Send /start if you want to play again.\n'
-        'See you next time!'
+        'Command cancelled!'
     )
 
     return ConversationHandler.END
@@ -1117,6 +1254,15 @@ def main() -> None:
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
+    set_game_handler = ConversationHandler(
+        entry_points = [CommandHandler('set_game', set_game)],
+        states = {
+            PC: [MessageHandler(Filters.text, pc)],
+            INVENTORY: [MessageHandler(Filters.text, inventory)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
     set_pc_handler = ConversationHandler(
         entry_points = [CommandHandler('set_pc', set_pc)],
         states = {
@@ -1181,6 +1327,7 @@ def main() -> None:
     )
 
     dispatcher.add_handler(start_handler)
+    dispatcher.add_handler(set_game_handler)
     dispatcher.add_handler(set_pc_handler)
     dispatcher.add_handler(combat_stats_handler)
     dispatcher.add_handler(show_abilities_handler)
