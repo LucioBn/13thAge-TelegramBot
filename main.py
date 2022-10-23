@@ -990,12 +990,11 @@ def show_backgrounds(update: Update, context: CallbackContext) -> int:
 
 
 def cancel(update: Update, context: CallbackContext) -> int:
-    """Cancels and ends the conversation."""
+    """Cancels the command and ends the conversation."""
 
-    user = update.message.from_user
-    logger.info(f"User {user.first_name} canceled the conversation.")
-    update.message.reply_text(
-        'Command cancelled!'
+    update.effective_message.reply_text(
+        "Command canceled.",
+        reply_markup = ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END
@@ -1249,7 +1248,7 @@ def main() -> None:
     start_handler = ConversationHandler(
         entry_points = [CommandHandler('start', start)],
         states = {
-            GM: [MessageHandler(Filters.regex('^(Player|Game Master)$'), gm)]
+            GM: [MessageHandler(Filters.regex('^(Player|Game Master)$') & (~ Filters.command), gm)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1257,8 +1256,8 @@ def main() -> None:
     set_game_handler = ConversationHandler(
         entry_points = [CommandHandler('set_game', set_game)],
         states = {
-            PC: [MessageHandler(Filters.text, pc)],
-            INVENTORY: [MessageHandler(Filters.text, inventory)]
+            PC: [MessageHandler(Filters.text & (~ Filters.command), pc)],
+            INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), inventory)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1266,22 +1265,22 @@ def main() -> None:
     set_pc_handler = ConversationHandler(
         entry_points = [CommandHandler('set_pc', set_pc)],
         states = {
-            NAME: [MessageHandler(Filters.text, name)],
-            RACE: [MessageHandler(Filters.regex(accettable_elements(races.races)), race)],
-            CLASS: [MessageHandler(Filters.regex(accettable_elements(classes.classes)), class_)],
-            ROLL: [MessageHandler(Filters.regex('^(Roll)$'), roll)],
-            ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores)],
-            ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_race)],
-            ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)), ability_scores_from_class)],
-            UNIQUE_THING: [MessageHandler(Filters.text, unique_thing)],
-            ICON: [MessageHandler(Filters.regex(accettable_elements(icons.icons)), icon)],
-            ICON_RELATIONSHIP: [MessageHandler(Filters.regex('^(Positive|Conflicted|Negative)$'), icon_relationship)],
-            RELATIONSHIP_VALUE: [MessageHandler(Filters.regex('^(1|2|3)$'), relationship_value)],
+            NAME: [MessageHandler(Filters.text & (~ Filters.command), name)],
+            RACE: [MessageHandler(Filters.regex(accettable_elements(races.races)) & (~ Filters.command), race)],
+            CLASS: [MessageHandler(Filters.regex(accettable_elements(classes.classes)) & (~ Filters.command), class_)],
+            ROLL: [MessageHandler(Filters.regex('^(Roll)$') & (~ Filters.command), roll)],
+            ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)) & (~ Filters.command), ability_scores)],
+            ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)) & (~ Filters.command), ability_scores_from_race)],
+            ABILITY_SCORES_FROM_CLASS: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)) & (~ Filters.command), ability_scores_from_class)],
+            UNIQUE_THING: [MessageHandler(Filters.text & (~ Filters.command), unique_thing)],
+            ICON: [MessageHandler(Filters.regex(accettable_elements(icons.icons)) & (~ Filters.command), icon)],
+            ICON_RELATIONSHIP: [MessageHandler(Filters.regex('^(Positive|Conflicted|Negative)$') & (~ Filters.command), icon_relationship)],
+            RELATIONSHIP_VALUE: [MessageHandler(Filters.regex('^(1|2|3)$') & (~ Filters.command), relationship_value)],
             BACKGROUND: [MessageHandler(Filters.regex(accettable_elements(
                 list(set(classes.classes['Barbarian']['Backgrounds']) | set(classes.classes['Bard']['Backgrounds']) | set(classes.classes['Cleric']['Backgrounds']) | 
                 set(classes.classes['Fighter']['Backgrounds']) | set(classes.classes['Paladin']['Backgrounds']) | set(classes.classes['Ranger']['Backgrounds']) | 
-                set(classes.classes['Rogue']['Backgrounds']) | set(classes.classes['Sorcerer']['Backgrounds']) | set(classes.classes['Wizard']['Backgrounds'])))), background)],
-            ASSIGN_BACKGROUND_POINTS: [MessageHandler(Filters.regex('^(1|2|3|4|5|6|7|8)$'), assign_background_points)]
+                set(classes.classes['Rogue']['Backgrounds']) | set(classes.classes['Sorcerer']['Backgrounds']) | set(classes.classes['Wizard']['Backgrounds'])))) & (~ Filters.command), background)],
+            ASSIGN_BACKGROUND_POINTS: [MessageHandler(Filters.regex('^(1|2|3|4|5|6|7|8)$') & (~ Filters.command), assign_background_points)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1289,7 +1288,7 @@ def main() -> None:
     combat_stats_handler = ConversationHandler(
         entry_points = [CommandHandler('combat_stats', who)],
         states = {
-            COMBAT_STATS: [MessageHandler(Filters.text, combat_stats)]
+            COMBAT_STATS: [MessageHandler(Filters.text & (~ Filters.command), combat_stats)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1297,7 +1296,7 @@ def main() -> None:
     show_abilities_handler = ConversationHandler(
         entry_points = [CommandHandler('abilities', who)],
         states = {
-            SHOW_ABILITIES: [MessageHandler(Filters.text, show_abilities)]
+            SHOW_ABILITIES: [MessageHandler(Filters.text & (~ Filters.command), show_abilities)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1305,7 +1304,7 @@ def main() -> None:
     show_unique_thing_handler = ConversationHandler(
         entry_points = [CommandHandler('unique_thing', who)],
         states = {
-            SHOW_UNIQUE_THING: [MessageHandler(Filters.text, show_unique_thing)]
+            SHOW_UNIQUE_THING: [MessageHandler(Filters.text & (~ Filters.command), show_unique_thing)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1313,7 +1312,7 @@ def main() -> None:
     show_icons_relationships_handler = ConversationHandler(
         entry_points = [CommandHandler('icons_relationships', who)],
         states = {
-            SHOW_ICONS_RELATIONSHIPS: [MessageHandler(Filters.text, show_icons_relationships)]
+            SHOW_ICONS_RELATIONSHIPS: [MessageHandler(Filters.text & (~ Filters.command), show_icons_relationships)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1321,7 +1320,7 @@ def main() -> None:
     show_backgrounds_handler = ConversationHandler(
         entry_points = [CommandHandler('backgrounds', who)],
         states = {
-            SHOW_BACKROUNDS: [MessageHandler(Filters.text, show_backgrounds)]
+            SHOW_BACKROUNDS: [MessageHandler(Filters.text & (~ Filters.command), show_backgrounds)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
