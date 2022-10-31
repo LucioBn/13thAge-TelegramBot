@@ -33,7 +33,7 @@ from telegram.ext import (
 
 # Enable logging
 logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO
+    format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s', level = logging.INFO
 )
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,8 @@ def start(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and explains some functions."""
     
     update.message.reply_text(
-        'Welcome, I\'m the bot that will help you to play 13th Age!',
+        'Welcome, I\'m the bot that will help you to play 13th Age!\n'
+        'If you want to join the game, send /join_game.',
         reply_markup = ReplyKeyboardRemove()
     )
 
@@ -67,6 +68,10 @@ def join_game(update: Update, context: CallbackContext) -> int:
     global background_points
 
     user = update.message.from_user
+
+    global chats
+    if update.effective_chat.id not in chats:
+        chats.append(update.effective_chat.id)
 
     if len(players) != 0:
         for username in players.keys():
@@ -251,10 +256,7 @@ def inventory(update: Update, context: CallbackContext) -> int:
 
         return INVENTORY
 
-    update.message.reply_text(
-        'Game has been set.',
-        reply_markup = ReplyKeyboardRemove()
-    )
+    send_to_all(update, context, 'Game has been set. Now the players can set their pc (/set_pc).')
 
     global game_has_been_set
     game_has_been_set = True
@@ -268,6 +270,15 @@ num_of_players = 0
 def set_pc(update: Update, context: CallbackContext) -> int:
     """Asks to set the name of the PC."""
 
+    user = update.message.from_user
+
+    if is_the_gm(user.name, update):
+        update.message.reply_text(
+            'You are the game master, this command is only for the players.'
+        )
+
+        return ConversationHandler.END
+
     if not game_has_been_set:
         update.message.reply_text(
             'The game has not been set. Ask the GM to set it.',
@@ -276,7 +287,6 @@ def set_pc(update: Update, context: CallbackContext) -> int:
 
         return ConversationHandler.END
 
-    user = update.message.from_user
     # write_players_dict()
 
     global num_of_players
@@ -289,9 +299,6 @@ def set_pc(update: Update, context: CallbackContext) -> int:
     while i != inventory_size:
         players[user.name]['Inventory']['Item ' + str(i + 1)] = None
         i += 1
-
-    if is_the_gm(user.name, update):
-        return ConversationHandler.END
 
     update.message.reply_text(
         'Choose a name for your PC.'
@@ -1042,12 +1049,8 @@ def is_the_gm(username: str, update) -> bool:
     # write_players_dict()
 
     if players[username] == 'Game Master':
-        update.message.reply_text(
-            'You are the game master, this command is only for the players.'
-        )
-
         return True
-    
+
     return False
 
 
@@ -1255,6 +1258,17 @@ def update_initiative_bonus(username):
     update_players_dict(username, 'IB', roll_d_n_faces(20) + players[username][short_to_long_for_abilities('Dex')] + get_class_level(username))
 
     write_players_json()
+
+
+chats = []
+
+
+def send_to_all(update: Update, context: CallbackContext, message: str) -> None:
+    """Sends the message to all the connected chat."""
+
+    for chat in chats:
+        context.bot.send_message(chat_id = chat,text = message)
+
 
 
 # Gloabal variables
