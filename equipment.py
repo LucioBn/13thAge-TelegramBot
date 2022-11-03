@@ -1,6 +1,6 @@
 equipment = {
     "Standard Traveling Gear": {
-        "Flint and tinder box": {
+        "Flint and Tinder Box": {
             "value": 1,
             "coin": "sp"
         },
@@ -8,27 +8,28 @@ equipment = {
             "value": 3,
             "coin": "sp"
         },
-        "Pack/traveling satchel": {
+        "Pack/Traveling Satchel": {
             "value": 1,
             "coin": "gp"
         },
-        "Rain cloak": {
+        "Rain Cloak": {
             "value": 3,
             "coin": "sp"
         },
-        "Road rations (5 days)": {
+        "Road Rations (5 days)": {
             "value": 25,
             "coin": "sp"
         },
-        "Sleeping roll": {
+        "Sleeping Roll": {
             "value": 1,
             "coin": "sp"
         },
-        "Water/wine skin or flask": {
+        "Water/Wine Skin or Flask": {
             "value": 7,
             "coin": "sp"
         }
     },
+
     "General Goods": {
         "Arrows": {
             "value": 1,
@@ -38,7 +39,7 @@ equipment = {
             "value": 1,
             "coin": "sp"
         },
-        "Sling bullet": {
+        "Sling Bullet": {
             "value": 1,
             "coin": "sp"
         },
@@ -102,7 +103,7 @@ equipment = {
             "value": 10,
             "coin": "gp"
         },
-        "Holy symbol/implement (chp)": {
+        "Holy Symbol/Implement (chp)": {
             "value": 100,
             "coin": "gp"
         },
@@ -110,7 +111,7 @@ equipment = {
             "value": 1000,
             "coin": "gp"
         },
-        "Iron spike": {
+        "Iron Spike": {
             "value": 1,
             "coin": "sp"
         },
@@ -122,11 +123,11 @@ equipment = {
             "value": 5,
             "coin": "gp"
         },
-        "Lantern oil (4 hrs)": {
+        "Lantern Oil (4 hrs)": {
             "value": 1,
             "coin": "sp"
         },
-        "Magnifying glass": {
+        "Magnifying Glass": {
             "value": 25,
             "coin": "gp"
         },
@@ -138,11 +139,11 @@ equipment = {
             "value": 2,
             "coin": "gp"
         },
-        "Musical instrument (intricate)": {
+        "Musical Instrument (intricate)": {
             "value": 15,
             "coin": "gp"
         },
-        "Musical instrument (simple)": {
+        "Musical Instrument (simple)": {
             "value": 3,
             "coin": "gp"
         },
@@ -150,7 +151,7 @@ equipment = {
             "value": 2,
             "coin": "cp"
         },
-        "Prayer book": {
+        "Prayer Book": {
             "value": 2,
             "coin": "gp"
         },
@@ -211,6 +212,7 @@ equipment = {
             "coin": "sp"
         }
     },
+
     "Food/Lodging": {
         "Road rations (1 day)": {
             "value": 5,
@@ -277,6 +279,7 @@ equipment = {
             "coin": "gp"
         }
     },
+
     "Mounts (including gear)": {
         "Dog, guard": {
             "value": 10,
@@ -303,8 +306,9 @@ equipment = {
             "coin": "cp"
         }
     },
+
     "Weapons, Melee (average quality)": {
-        "Battle gauntlets": {
+        "Battle Gauntlets": {
             "value": 4,
             "coin": "gp"
         },
@@ -316,11 +320,15 @@ equipment = {
             "value": 5,
             "coin": "sp"
         },
-        "Dagger/knife": {
+        "Dagger": {
             "value": 1,
             "coin": "gp"
         },
-        "Double axe": {
+        "Knife": {
+            "value": 1,
+            "coin": "gp"
+        },
+        "Double Axe": {
             "value": 12,
             "coin": "gp"
         },
@@ -392,7 +400,7 @@ equipment = {
             "value": 4,
             "coin": "gp"
         },
-        "Two-bladed sword": {
+        "Two-Bladed sword": {
             "value": 15,
             "coin": "gp"
         },
@@ -401,6 +409,7 @@ equipment = {
             "coin": "gp"
         }
     },
+
     "Weapons, Ranged (average quality)": {
         "Bow: Longbow": {
             "value": 14,
@@ -410,15 +419,15 @@ equipment = {
             "value": 9,
             "coin": "gp"
         },
-        "Crossbow: Hand crossbow": {
+        "Crossbow: Hand Crossbow": {
             "value": 8,
             "coin": "gp"
         },
-        "Crossbow: Light crossbow": {
+        "Crossbow: Light Crossbow": {
             "value": 10,
             "coin": "gp"
         },
-        "Crossbow: Heavy crossbow": {
+        "Crossbow: Heavy Crossbow": {
             "value": 15,
             "coin": "gp"
         },
@@ -426,7 +435,7 @@ equipment = {
             "value": 2,
             "coin": "gp"
         },
-        "Net, weighted": {
+        "Net, Weighted": {
             "value": 3,
             "coin": "gp"
         },
@@ -438,17 +447,18 @@ equipment = {
             "value": 7,
             "coin": "sp"
         },
-        "Throwing axe": {
+        "Throwing Axe": {
             "value": 3,
             "coin": "gp"
         },
-        "Throwing hammer": {
+        "Throwing Hammer": {
             "value": 3,
             "coin": "gp"
         }
     },
+
     "Armor (average quality)": {
-        "Cloth/padded": {
+        "Cloth/Padded": {
             "value": 1,
             "coin": "gp"
         },
@@ -456,7 +466,7 @@ equipment = {
             "value": 10,
             "coin": "gp"
         },
-        "Studded leather": {
+        "Studded Leather": {
             "value": 15,
             "coin": "gp"
         },
@@ -464,7 +474,7 @@ equipment = {
             "value": 10,
             "coin": "gp"
         },
-        "Light chain": {
+        "Light Chain": {
             "value": 20,
             "coin": "gp"
         },
@@ -476,7 +486,7 @@ equipment = {
             "value": 40,
             "coin": "gp"
         },
-        "Half-plate": {
+        "Half-Plate": {
             "value": 45,
             "coin": "gp"
         },
@@ -489,6 +499,7 @@ equipment = {
             "coin": "gp"
         }
     },
+
     "Services": {
         "Bath, with servants": {
             "value": 1,
@@ -573,4 +584,5 @@ equipment = {
             "value": "varies"
         }
     }
+    
 }
