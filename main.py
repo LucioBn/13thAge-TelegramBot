@@ -39,13 +39,14 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 GM = 0
-PC, INVENTORY = range(2)
+PC, INVENTORY, PP, GP, SP, CP = range(6)
 NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, ICON_RELATIONSHIP, RELATIONSHIP_VALUE, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(13)
 COMBAT_STATS = 0
 SHOW_ABILITIES = 0
 SHOW_UNIQUE_THING = 0
 SHOW_ICONS_RELATIONSHIPS = 0
 SHOW_BACKROUNDS = 0
+SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
 
 
 def start(update: Update, context: CallbackContext) -> int:
@@ -219,7 +220,7 @@ def num_limit_of_pcs(update: Update, context: CallbackContext) -> int:
         return PC
 
     update.message.reply_text(
-        'How many items can the inventory contain?',
+        'How many items can the inventory contain? (min. 5)',
         reply_markup = ReplyKeyboardRemove()
     )
 
@@ -230,7 +231,7 @@ inventory_size = 0
 
 
 def inventory(update: Update, context: CallbackContext) -> int:
-    """Stores the size of the inventory and ends the conversation."""
+    """Stores the size of the inventory and ends asks the starting coins of a pc."""
 
     global inventory_size
 
@@ -239,7 +240,7 @@ def inventory(update: Update, context: CallbackContext) -> int:
     try:
         inventory_size = int(update.message.text)
 
-        if inventory_size < 0:
+        if inventory_size < 5:
             raise Exception()
     except ValueError:
         update.message.reply_text(
@@ -250,11 +251,163 @@ def inventory(update: Update, context: CallbackContext) -> int:
         return INVENTORY
     except Exception as error:
         update.message.reply_text(
-            'Need to be more or equal than 0.',
+            'Need to be more or equal than 5.',
             reply_markup = ReplyKeyboardRemove()
         )
 
         return INVENTORY
+
+    update.message.reply_text(
+        'Choose with how many platinum piece (pp) a player starts.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return PP
+
+
+beginning_pp = 0
+
+
+def starting_pp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    global beginning_pp
+
+    user = update.message.from_user
+
+    try:
+        beginning_pp = int(update.message.text)
+
+        if beginning_pp < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return PP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return PP
+
+    update.message.reply_text(
+        'Choose with how many gold piece (gp) a player starts.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return GP
+
+
+beginning_gp = 0
+
+
+def starting_gp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    global beginning_gp
+
+    user = update.message.from_user
+
+    try:
+        beginning_gp = int(update.message.text)
+
+        if beginning_gp < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return GP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return GP
+
+    update.message.reply_text(
+        'Choose with how many silver piece (sp) a player starts.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return SP
+
+
+beginning_sp = 0
+
+
+def starting_sp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    global beginning_sp
+
+    user = update.message.from_user
+
+    try:
+        beginning_sp = int(update.message.text)
+
+        if beginning_sp < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return SP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return SP
+
+    update.message.reply_text(
+        'Choose with how many copper piece (cp) a player starts.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return CP
+
+
+beginning_cp = 0
+
+
+def starting_cp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    global beginning_cp
+
+    user = update.message.from_user
+
+    try:
+        beginning_cp = int(update.message.text)
+
+        if beginning_cp < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return SP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return SP
 
     send_to_all(update, context, 'Game has been set. Now the players can set their pc (/set_pc).')
 
@@ -299,6 +452,13 @@ def set_pc(update: Update, context: CallbackContext) -> int:
     while i != inventory_size:
         players[user.name]['Inventory']['Item ' + str(i + 1)] = None
         i += 1
+    players[user.name]["Coins"] = {}
+    players[user.name]["Coins"]["pp"] = beginning_pp
+    players[user.name]["Coins"]["gp"] = beginning_gp
+    players[user.name]["Coins"]["sp"] = beginning_sp
+    players[user.name]["Coins"]["cp"] = beginning_cp
+
+    balance_currencies(user.name)
 
     update.message.reply_text(
         'Choose a name for your PC.'
@@ -868,25 +1028,35 @@ def who(update: Update, context: CallbackContext) -> int:
 
     reply_keyboard = []
     for nickname in players.keys():
-        if "PC's name" in players[nickname]:
+        if type(players[nickname]) == dict and "PC's name" in players[nickname]:
             reply_keyboard.append([players[nickname]["PC's name"]])
+    
+    if len(reply_keyboard) == 0:
+        update.message.reply_text(
+            'There\'s not yet PCs in the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
 
     def request(command) -> str:
         if command == '/combat_stats':
-            return 'combat stats'
+            return "to know his PC's combat stats"
         if command == '/abilities':
-            return 'abilities stats'
+            return "to know his PC's abilities stats"
         if command == '/unique_thing':
-            return 'unique thing'
+            return "to know his PC's unique thing"
         if command == '/icons_relationships':
-            return "icons's relationships"
+            return "to know his PC's icons's relationships"
         if command == '/backgrounds':
-            return "backgrounds"
+            return "to know his PC's backgrounds"
+        if command == '/coins':
+            return "to update his PC's coins"
 
     update.message.reply_text(
-        f'Tap in a PC\'s name or write a player name to know his PC\'s {request(command)}.',
+        f'Tap in a PC\'s name or write a player name {request(command)}.',
         reply_markup = ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the PC\'s name.'
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the PC\'s or player\'s name.'
         )
     )
 
@@ -900,6 +1070,8 @@ def who(update: Update, context: CallbackContext) -> int:
         return SHOW_ICONS_RELATIONSHIPS
     if command == '/backgrounds':
         return SHOW_BACKROUNDS
+    if command == '/coins':
+        return SHOW_COINS
 
 
 def combat_stats(update: Update, context: CallbackContext) -> int:
@@ -949,7 +1121,7 @@ def show_abilities(update: Update, context: CallbackContext) -> int:
     nickname = who_nickname(update.message.text, update)
 
     context.bot.send_message(chat_id = update.effective_chat.id,
-        text  = players[nickname]["PC's name"] + "'s abilities (" + nickname + "'s PC):\n" + ability_with_their_score(nickname)
+        text  = players[nickname]["PC's name"] + "'s abilities:\n" + ability_with_their_score(nickname)
     )
 
     return ConversationHandler.END
@@ -963,7 +1135,7 @@ def show_unique_thing(update: Update, context: CallbackContext) -> int:
     nickname = who_nickname(update.message.text, update)
 
     context.bot.send_message(chat_id = update.effective_chat.id,
-        text  = players[nickname]["PC's name"] + "'s unique thing (" + nickname + "'s PC):\n" + players[nickname]["Unique"]
+        text  = players[nickname]["PC's name"] + "'s unique thing:\n" + players[nickname]["Unique"]
     )
 
     return ConversationHandler.END
@@ -986,7 +1158,7 @@ def show_icons_relationships(update: Update, context: CallbackContext) -> int:
         return s
     
     context.bot.send_message(chat_id = update.effective_chat.id,
-        text = players[nickname]["PC's name"] + "'s icons's relationships (" + nickname + "'s PC):" + message()
+        text = players[nickname]["PC's name"] + "'s icons's relationships:" + message()
     )
 
     return ConversationHandler.END
@@ -1010,7 +1182,205 @@ def show_backgrounds(update: Update, context: CallbackContext) -> int:
 
 
     context.bot.send_message(chat_id = update.effective_chat.id,
-        text = str(players[nickname]["PC's name"]) + "'s backgrounds's (" + str(nickname) + "'s PC):" + message()
+        text = str(players[nickname]["PC's name"]) + "'s backgrounds:" + message()
+    )
+
+    return ConversationHandler.END
+
+
+nick_4_coins: str
+
+
+def show_player_coins(update: Update, context: CallbackContext) -> int:
+    """Show the coins of a player."""
+
+    user = update.message.from_user
+
+    nickname = who_nickname(update.message.text, update)
+
+    def message() -> str:
+        """Create the message to send (only for show_player_coins)."""
+
+        s = ''
+        for currency in players[nickname]["Coins"].keys():
+            s += '\n' + str(players[nickname]["Coins"][currency]) + ' ' + currency
+
+        return s
+
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text = str(players[nickname]["PC's name"]) + " has got:" + message()
+    )
+
+    if is_the_gm:
+        global nick_4_coins
+        nick_4_coins = nickname
+
+        reply_keyboard = [
+            ['Yes'],
+            ['No']
+        ]
+
+        update.message.reply_text(
+            'Do you want to update his coins?',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Yes or No?'
+            )
+        )
+
+        return UPDATE_COINS
+    
+    return ConversationHandler.END
+
+def update_player_coins(update: Update, context: CallbackContext) -> int:
+    """Update the player coins (only for GM)."""
+
+    user = update.message.from_user
+
+    if update.message.text == 'Yes':
+        update.message.reply_text(
+            'How many platinum piece (pp) ' + players[nick_4_coins]["PC\'s name"] + ' has?',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_PP
+
+    update.message.reply_text(
+        'The coins won\'t be updated.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
+
+def update_player_pp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    user = update.message.from_user
+
+    try:
+        players[nick_4_coins]["Coins"]["pp"] = int(update.message.text)
+
+        if players[nick_4_coins]["Coins"]["pp"] < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_PP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_PP
+
+    update.message.reply_text(
+        'How many golden piece (gp) ' + players[nick_4_coins]["PC\'s name"] + ' has?',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return UPDATE_GP
+
+
+def update_player_gp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    user = update.message.from_user
+
+    try:
+        players[nick_4_coins]["Coins"]["gp"] = int(update.message.text)
+
+        if players[nick_4_coins]["Coins"]["gp"] < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_GP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_GP
+
+    update.message.reply_text(
+        'How many silver piece (sp) ' + players[nick_4_coins]["PC\'s name"] + ' has?',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return UPDATE_SP
+
+
+def update_player_sp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    user = update.message.from_user
+
+    try:
+        players[nick_4_coins]["Coins"]["sp"] = int(update.message.text)
+
+        if players[nick_4_coins]["Coins"]["sp"] < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_SP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_SP
+
+    update.message.reply_text(
+        'How many copper piece (cp) ' + players[nick_4_coins]["PC\'s name"] + ' has?',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return UPDATE_CP
+
+
+def update_player_cp(update: Update, context: CallbackContext) -> int:
+    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+
+    user = update.message.from_user
+
+    try:
+        players[nick_4_coins]["Coins"]["cp"] = int(update.message.text)
+
+        if players[nick_4_coins]["Coins"]["cp"] < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_CP
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return UPDATE_CP
+
+    balance_currencies(user.name)
+
+    update.message.reply_text(
+        'Now ' + str(players[nick_4_coins]["PC\'s name"]) + ' has ' + str(players[nick_4_coins]["Coins"]["pp"]) + ' pp, ' + str(players[nick_4_coins]["Coins"]["gp"]) + ' gp, ' + str(players[nick_4_coins]["Coins"]["sp"]) + ' sp and ' + str(players[nick_4_coins]["Coins"]["cp"]) + ' cp.',
+        reply_markup = ReplyKeyboardRemove()
     )
 
     return ConversationHandler.END
@@ -1064,6 +1434,7 @@ def set_abilities(username):
     global abilities_to_be_assigned
     
     abilities_to_be_assigned[username] = abilities.abilities.copy()
+
 
 def accettable_elements(dict: dict) -> str:
     s = '^('
@@ -1147,6 +1518,7 @@ def get_class_level(username) -> int:
 
 def get_mid_value(list: list) -> int:
     """Find the mid value of the elements in the list."""
+
     sum = 0
     for value in list:
         sum += value
@@ -1170,6 +1542,19 @@ def extend_abbreviation(abbrevation) -> str:
     return 'No abbrevation found.'
 
 
+def balance_currencies(username) -> None:
+    """Balance the currencies."""
+
+    players[username]['Coins']['sp'] = int((players[username]['Coins']['sp'] + (players[username]['Coins']['cp'] / 10)) // 1)
+    players[username]['Coins']['cp'] = int((players[username]['Coins']['cp'] % 10) // 1)
+
+    players[username]['Coins']['gp'] = int((players[username]['Coins']['gp'] + (players[username]['Coins']['sp'] / 10)) // 1)
+    players[username]['Coins']['sp'] = int((players[username]['Coins']['sp'] % 10) // 1)
+
+    players[username]['Coins']['pp'] = int((players[username]['Coins']['pp'] + (players[username]['Coins']['gp'] / 10)) // 1)
+    players[username]['Coins']['gp'] = int((players[username]['Coins']['gp'] % 10) // 1)
+
+
 # Roll a die
 def roll_d_n_faces(faces) -> int:
     """Roll a die with n faces."""
@@ -1186,11 +1571,12 @@ def who_nickname(name, update):
         return name
 
     for nickname in players.keys():
-        if name == players[nickname]["PC's name"]:
-            return nickname
+        if players[nickname] != 'Game Master':
+            if name == players[nickname]["PC's name"]:
+                return nickname
 
     update.message.reply_text(
-        f'None PC\'s name or player\'s name is {nickname}.',
+        f'None PC\'s name or player\'s name is {name}.',
         reply_markup = ReplyKeyboardRemove()
     )
 
@@ -1306,7 +1692,11 @@ def main() -> None:
         entry_points = [CommandHandler('set_game', set_game)],
         states = {
             PC: [MessageHandler(Filters.text & (~ Filters.command), num_limit_of_pcs)],
-            INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), inventory)]
+            INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), inventory)],
+            PP: [MessageHandler(Filters.text & (~ Filters.command), starting_pp)],
+            GP: [MessageHandler(Filters.text & (~ Filters.command), starting_gp)],
+            SP: [MessageHandler(Filters.text & (~ Filters.command), starting_sp)],
+            CP: [MessageHandler(Filters.text & (~ Filters.command), starting_cp)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -1374,6 +1764,19 @@ def main() -> None:
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
+    update_player_coins_handler = ConversationHandler(
+        entry_points = [CommandHandler('coins', who)],
+        states = {
+            SHOW_COINS: [MessageHandler(Filters.text & (~ Filters.command), show_player_coins)],
+            UPDATE_COINS: [MessageHandler(Filters.regex('^(Yes|No)$') & (~ Filters.command), update_player_coins)],
+            UPDATE_PP: [MessageHandler(Filters.text & (~ Filters.command), update_player_pp)],
+            UPDATE_GP: [MessageHandler(Filters.text & (~ Filters.command), update_player_gp)],
+            UPDATE_SP: [MessageHandler(Filters.text & (~ Filters.command), update_player_sp)],
+            UPDATE_CP: [MessageHandler(Filters.text & (~ Filters.command), update_player_cp)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
     dispatcher.add_handler(set_game_handler)
@@ -1383,6 +1786,7 @@ def main() -> None:
     dispatcher.add_handler(show_unique_thing_handler)
     dispatcher.add_handler(show_icons_relationships_handler)
     dispatcher.add_handler(show_backgrounds_handler)
+    dispatcher.add_handler(update_player_coins_handler)
     dispatcher.add_handler(CommandHandler("reset", reset))
 
     # Start the Bot
