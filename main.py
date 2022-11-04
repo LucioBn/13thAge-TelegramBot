@@ -18,6 +18,7 @@ import classes
 import abilities
 import icons
 import expansions
+import market
 
 import json
 
@@ -48,6 +49,7 @@ SHOW_ICONS_RELATIONSHIPS = 0
 SHOW_BACKROUNDS = 0
 SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
 SHOW_INVENTORY = 0
+CATEGORY = 0
 
 
 # start of /start
@@ -1481,6 +1483,51 @@ def show_inventory(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+# start /market
+
+def show_market(update: Update, context: CallbackContext) -> int:
+    """Asks which category the player wants to see."""
+
+    user = update.message.from_user
+
+    reply_keyboard = []
+    for category in market.equipment.keys():
+        reply_keyboard.append([category])
+
+    update.message.reply_text(
+        'Which category do you want to be shown?',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the category.'
+        )
+    )
+
+    return CATEGORY
+
+
+def show_category(update: Update, context: CallbackContext) -> int:
+    """Shows the equipments with their price of the chosen category."""
+
+    user = update.message.from_user
+
+    def message():
+        """Create the message for show_category()."""
+
+        m = update.message.text
+        s = ''
+        for elem in market.equipment[m]:
+            s += '\n' + elem + ' -> ' + str(market.equipment[m][elem]['value']) + ' ' + market.equipment[m][elem]['coin']
+
+        return s
+    
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text = message()
+    )
+
+    return ConversationHandler.END
+
+# end /market
+
+
 # /cancel
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -1576,7 +1623,7 @@ def short_to_long_for_abilities(short) -> str:
             return ability
 
 
-def set_abilities(username):
+def set_abilities(username) -> None:
     global abilities_to_be_assigned
     
     abilities_to_be_assigned[username] = abilities.abilities.copy()
@@ -1942,6 +1989,14 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    show_market_handler = ConversationHandler(
+        entry_points = [CommandHandler('market', show_market)],
+        states = {
+            CATEGORY: [MessageHandler(Filters.text & (~ Filters.command), show_category)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
@@ -1961,6 +2016,7 @@ def main() -> None:
     dispatcher.add_handler(player_coins_GM_handler)
     dispatcher.add_handler(CommandHandler('inventory', show_inventory))
     dispatcher.add_handler(show_inventory_GM_handler)
+    dispatcher.add_handler(show_market_handler)
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
 
