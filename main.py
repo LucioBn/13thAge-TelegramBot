@@ -49,6 +49,8 @@ SHOW_BACKROUNDS = 0
 SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
 
 
+# start of /start
+
 def start(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and explains some functions."""
     
@@ -60,6 +62,10 @@ def start(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+# end of /start
+
+
+# start of /join_game
 
 def join_game(update: Update, context: CallbackContext) -> int:
     """Starts the conversation and asks to choose a name for the PC."""
@@ -156,6 +162,10 @@ def gm(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+# end of /join_game
+
+
+# start of /set_game
 
 game_has_been_set = False
 
@@ -416,7 +426,11 @@ def starting_cp(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+# end of /set_game
 
+
+# start of /set_pc
+ 
 num_of_players = 0
 
 
@@ -1010,6 +1024,10 @@ def assign_background_points(update: Update, context: CallbackContext) -> int:
 
         return BACKGROUND
 
+# end of /set_pc
+
+
+# usefull for more than one command
 
 def who(update: Update, context: CallbackContext) -> int:
     """Asks for who you want to see the stats."""
@@ -1074,6 +1092,8 @@ def who(update: Update, context: CallbackContext) -> int:
         return SHOW_COINS
 
 
+# /combat_stats
+
 def combat_stats(update: Update, context: CallbackContext) -> int:
     """Calculates and shows the combat stats."""
 
@@ -1113,6 +1133,8 @@ def combat_stats(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+# /abilities
+
 def show_abilities(update: Update, context: CallbackContext) -> int:
     """Shows the abilities with their values."""
 
@@ -1127,6 +1149,8 @@ def show_abilities(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+# /unique_thing
+
 def show_unique_thing(update: Update, context: CallbackContext) -> int:
     """Shows the unique thing."""
 
@@ -1140,6 +1164,8 @@ def show_unique_thing(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+
+# /icons_relationships
 
 def show_icons_relationships(update: Update, context: CallbackContext) -> int:
     """Shows the icons's relationships."""
@@ -1163,6 +1189,8 @@ def show_icons_relationships(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+
+# /backgrounds
 
 def show_backgrounds(update: Update, context: CallbackContext) -> int:
     """Shows the backgrounds's."""
@@ -1188,11 +1216,13 @@ def show_backgrounds(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+# start of /coins
+
 nick_4_coins: str
 
 
 def show_player_coins(update: Update, context: CallbackContext) -> int:
-    """Show the coins of a player."""
+    """Show the coins of a player and if the client is the GM, asks them if they want to change it."""
 
     user = update.message.from_user
 
@@ -1211,7 +1241,7 @@ def show_player_coins(update: Update, context: CallbackContext) -> int:
         text = str(players[nickname]["PC's name"]) + " has got:" + message()
     )
 
-    if is_the_gm:
+    if is_the_gm(user.name, update):
         global nick_4_coins
         nick_4_coins = nickname
 
@@ -1231,8 +1261,9 @@ def show_player_coins(update: Update, context: CallbackContext) -> int:
     
     return ConversationHandler.END
 
+
 def update_player_coins(update: Update, context: CallbackContext) -> int:
-    """Update the player coins (only for GM)."""
+    """If the GM wants to modify the coins of a specific player, asks to set the new amount of pp."""
 
     user = update.message.from_user
 
@@ -1253,7 +1284,7 @@ def update_player_coins(update: Update, context: CallbackContext) -> int:
 
 
 def update_player_pp(update: Update, context: CallbackContext) -> int:
-    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+    """Stores the new amount of pp and asks to set the new amount of gp."""
 
     user = update.message.from_user
 
@@ -1286,7 +1317,7 @@ def update_player_pp(update: Update, context: CallbackContext) -> int:
 
 
 def update_player_gp(update: Update, context: CallbackContext) -> int:
-    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+    """Stores the new amount of gp and asks to set the new amount of sp."""
 
     user = update.message.from_user
 
@@ -1319,7 +1350,7 @@ def update_player_gp(update: Update, context: CallbackContext) -> int:
 
 
 def update_player_sp(update: Update, context: CallbackContext) -> int:
-    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+    """Stores the new amount of sp and asks to set the new amount of cp."""
 
     user = update.message.from_user
 
@@ -1352,7 +1383,7 @@ def update_player_sp(update: Update, context: CallbackContext) -> int:
 
 
 def update_player_cp(update: Update, context: CallbackContext) -> int:
-    """Check and stores the num of coins that a player has in the begining and ends the conversation."""
+    """Stores the new amount of sp and asks to set the new amount of cp."""
 
     user = update.message.from_user
 
@@ -1385,6 +1416,10 @@ def update_player_cp(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+# end of /coins
+
+
+# /cancel
 
 def cancel(update: Update, context: CallbackContext) -> int:
     """Cancels the command and ends the conversation."""
@@ -1396,6 +1431,8 @@ def cancel(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
+
+# /reset
 
 def reset(update: Update, context: CallbackContext) -> int:
     """Resets the game."""
@@ -1413,6 +1450,7 @@ def reset(update: Update, context: CallbackContext) -> int:
 
 
 # Usefull
+
 def is_the_gm(username: str, update) -> bool:
     """Return true if the user is the gm and sends a message, saying them that they can't play that action."""
 
@@ -1555,7 +1593,6 @@ def balance_currencies(username) -> None:
     players[username]['Coins']['gp'] = int((players[username]['Coins']['gp'] % 10) // 1)
 
 
-# Roll a die
 def roll_d_n_faces(faces) -> int:
     """Roll a die with n faces."""
     
@@ -1583,7 +1620,8 @@ def who_nickname(name, update):
     return ConversationHandler.END
 
 
-# Update combat stats
+# start of update combat stats
+
 def update_hp_in_persons(username):
     """Update hp in persons.json for that specific user."""
 
@@ -1645,6 +1683,8 @@ def update_initiative_bonus(username):
 
     write_players_json()
 
+# end of update combat stats
+
 
 chats = []
 
@@ -1658,6 +1698,7 @@ def send_to_all(update: Update, context: CallbackContext, message: str) -> None:
 
 
 # Gloabal variables
+
 points_for_the_abilities = []
 abilities_to_be_assigned = {'': []}
 check = []
