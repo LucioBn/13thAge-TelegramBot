@@ -47,6 +47,7 @@ SHOW_UNIQUE_THING = 0
 SHOW_ICONS_RELATIONSHIPS = 0
 SHOW_BACKROUNDS = 0
 SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
+SHOW_INVENTORY = 0
 
 
 # start of /start
@@ -464,7 +465,7 @@ def set_pc(update: Update, context: CallbackContext) -> int:
     players[user.name]["Inventory"] = {}
     i = 0
     while i != inventory_size:
-        players[user.name]['Inventory']['Item ' + str(i + 1)] = None
+        players[user.name]['Inventory']['Item ' + str(i + 1)] = 'empty'
         i += 1
     players[user.name]["Coins"] = {}
     players[user.name]["Coins"]["pp"] = beginning_pp
@@ -1030,9 +1031,17 @@ def assign_background_points(update: Update, context: CallbackContext) -> int:
 # usefull for more than one command
 
 def who(update: Update, context: CallbackContext) -> int:
-    """Asks for who you want to see the stats."""
+    """If you are the GM, asks for who you want to see the stats."""
 
     user = update.message.from_user
+
+    if not is_the_gm(user.name, update):
+        update.message.reply_text(
+            'Only the GM can set the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
 
     if len(players.keys()) == 0:
         update.message.reply_text(
@@ -1058,18 +1067,20 @@ def who(update: Update, context: CallbackContext) -> int:
         return ConversationHandler.END
 
     def request(command) -> str:
-        if command == '/combat_stats':
+        if command == '/combat_stats_gm':
             return "to know his PC's combat stats"
-        if command == '/abilities':
+        if command == '/abilities_gm':
             return "to know his PC's abilities stats"
-        if command == '/unique_thing':
+        if command == '/unique_thing_gm':
             return "to know his PC's unique thing"
-        if command == '/icons_relationships':
+        if command == '/icons_relationships_gm':
             return "to know his PC's icons's relationships"
-        if command == '/backgrounds':
+        if command == '/backgrounds_gm':
             return "to know his PC's backgrounds"
-        if command == '/coins':
-            return "to update his PC's coins"
+        if command == '/coins_gm':
+            return "to know and update his PC's coins"
+        if command == '/inventory_gm':
+            return "to know his PC's inventory"
 
     update.message.reply_text(
         f'Tap in a PC\'s name or write a player name {request(command)}.',
@@ -1078,28 +1089,33 @@ def who(update: Update, context: CallbackContext) -> int:
         )
     )
 
-    if command == '/combat_stats':
+    if command == '/combat_stats_gm':
         return COMBAT_STATS
-    if command == '/abilities':
+    if command == '/abilities_gm':
         return SHOW_ABILITIES
-    if command == '/unique_thing':
+    if command == '/unique_thing_gm':
         return SHOW_UNIQUE_THING
-    if command == '/icons_relationships':
+    if command == '/icons_relationships_gm':
         return SHOW_ICONS_RELATIONSHIPS
-    if command == '/backgrounds':
+    if command == '/backgrounds_gm':
         return SHOW_BACKROUNDS
-    if command == '/coins':
+    if command == '/coins_gm':
         return SHOW_COINS
+    if command == '/inventory_gm':
+        return SHOW_INVENTORY
 
 
 # /combat_stats
 
-def combat_stats(update: Update, context: CallbackContext) -> int:
+def show_combat_stats(update: Update, context: CallbackContext) -> int:
     """Calculates and shows the combat stats."""
 
     user = update.message.from_user
 
-    nickname = who_nickname(update.message.text, update)
+    if is_the_gm(user.name, update):
+        nickname = who_nickname(update.message.text, update)
+    else:
+        nickname = user.name
 
     update_hp_in_persons(nickname)
     update_ac_in_persons(nickname)
@@ -1140,7 +1156,10 @@ def show_abilities(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    nickname = who_nickname(update.message.text, update)
+    if is_the_gm(user.name, update):
+        nickname = who_nickname(update.message.text, update)
+    else:
+        nickname = user.name
 
     context.bot.send_message(chat_id = update.effective_chat.id,
         text  = players[nickname]["PC's name"] + "'s abilities:\n" + ability_with_their_score(nickname)
@@ -1156,7 +1175,10 @@ def show_unique_thing(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    nickname = who_nickname(update.message.text, update)
+    if is_the_gm(user.name, update):
+        nickname = who_nickname(update.message.text, update)
+    else:
+        nickname = user.name
 
     context.bot.send_message(chat_id = update.effective_chat.id,
         text  = players[nickname]["PC's name"] + "'s unique thing:\n" + players[nickname]["Unique"]
@@ -1172,7 +1194,10 @@ def show_icons_relationships(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    nickname = who_nickname(update.message.text, update)
+    if is_the_gm(user.name, update):
+        nickname = who_nickname(update.message.text, update)
+    else:
+        nickname = user.name
 
     def message() -> str:
         """Create the message to send (only for show_icons_relationships)."""
@@ -1197,7 +1222,10 @@ def show_backgrounds(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    nickname = who_nickname(update.message.text, update)
+    if is_the_gm(user.name, update):
+        nickname = who_nickname(update.message.text, update)
+    else:
+        nickname = user.name
 
     def message() -> str:
         """Create the message to send (only for show_backgrounds)."""
@@ -1221,12 +1249,15 @@ def show_backgrounds(update: Update, context: CallbackContext) -> int:
 nick_4_coins: str
 
 
-def show_player_coins(update: Update, context: CallbackContext) -> int:
+def show_coins(update: Update, context: CallbackContext) -> int:
     """Show the coins of a player and if the client is the GM, asks them if they want to change it."""
 
     user = update.message.from_user
 
-    nickname = who_nickname(update.message.text, update)
+    if is_the_gm(user.name, update):
+        nickname = who_nickname(update.message.text, update)
+    else:
+        nickname = user.name
 
     def message() -> str:
         """Create the message to send (only for show_player_coins)."""
@@ -1419,6 +1450,37 @@ def update_player_cp(update: Update, context: CallbackContext) -> int:
 # end of /coins
 
 
+# /inventory
+
+def show_inventory(update: Update, context: CallbackContext) -> int:
+    """Shows the inventory of the PC, the GM could choose of which PC."""
+
+    user = update.message.from_user
+
+    if is_the_gm(user.name, update):
+        nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
+    else:
+        nickname = user.name
+
+    def message() -> str:
+        """Creates the message (usefull only for show_inventory."""
+
+        s = players[nickname]["PC's name"] + "'s inventory (" + nickname + "'s PC):"
+        for item in players[nickname]["Inventory"].keys():
+            s += '\n' + item + ': ' + players[nickname]["Inventory"][item]
+
+        return s
+        
+    context.bot.send_message(chat_id = update.effective_chat.id,
+        text  =  message()
+    )
+
+    return ConversationHandler.END
+
+
 # /cancel
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -1442,9 +1504,55 @@ def reset(update: Update, context: CallbackContext) -> int:
 
     write_players_json()
 
-    context.bot.send_message(chat_id = update.effective_chat.id,
-        text = 'The game has been reset.'
-    )
+    send_to_all(update, context, 'The game has been reset.')
+
+    return ConversationHandler.END
+
+
+# usefull for testing
+
+def auto_set_pc(update: Update, context: CallbackContext) -> int:
+    """Sets automatically the pc."""
+
+    user = update.message.from_user
+
+    global num_of_players
+    num_of_players += 1
+
+    global players
+    players[user.name] = {}
+    players[user.name]["Inventory"] = {}
+    i = 0
+    while i != inventory_size:
+        players[user.name]['Inventory']['Item ' + str(i + 1)] = 'empty'
+        i += 1
+    players[user.name]["Coins"] = {}
+    players[user.name]["Coins"]["pp"] = beginning_pp
+    players[user.name]["Coins"]["gp"] = beginning_gp
+    players[user.name]["Coins"]["sp"] = beginning_sp
+    players[user.name]["Coins"]["cp"] = beginning_cp
+
+    balance_currencies(user.name)
+
+    players[user.name]["PC's name"] = "Po"
+    players[user.name]["Race"] = "Human"
+    players[user.name]["Class"] = "Cleric"
+    players[user.name]["Class level"] = 1
+    players[user.name]["Strenght"] = 17
+    players[user.name]["Intelligence"] = 13
+    players[user.name]["Wisdom"] = 9
+    players[user.name]["Charisma"] = 7
+    players[user.name]["Dexterity"] = 16
+    players[user.name]["Constitution"] = 10
+    players[user.name]["Unique"] = "my unique thing"
+    players[user.name]["Relations with the icons"] = {}
+    players[user.name]["Relations with the icons"]["Archmage"] = {}
+    players[user.name]["Relations with the icons"]["Archmage"]["Type"] = "Positive"
+    players[user.name]["Relations with the icons"]["Archmage"]["Value"] = 3
+    players[user.name]["Backgrounds"] = {}
+    players[user.name]["Backgrounds"]["Healer"] = 8
+
+    write_players_json()
 
     return ConversationHandler.END
 
@@ -1600,7 +1708,17 @@ def roll_d_n_faces(faces) -> int:
 
 
 def who_nickname(name, update):
-    """Returns the nickname of the player that created the PC."""
+    """Returns the nickname of the player that created the PC (returns -1 if the GM is accessing to a non-authorized command)."""
+
+    command = update.message.text
+
+    if command == '/combat_stats' or command == '/abilities' or command == '/unique_thing' or command == '/icons_relationships' or command == '/backgrounds' or command == '/coins' or command == '/inventory':
+        update.message.reply_text(
+            'Only the players can use this command.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return -1
 
     if name in players.keys() or '@' + name in players.keys():
         if not '@' in name:
@@ -1696,7 +1814,6 @@ def send_to_all(update: Update, context: CallbackContext, message: str) -> None:
         context.bot.send_message(chat_id = chat,text = message)
 
 
-
 # Gloabal variables
 
 points_for_the_abilities = []
@@ -1765,50 +1882,50 @@ def main() -> None:
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
-    combat_stats_handler = ConversationHandler(
-        entry_points = [CommandHandler('combat_stats', who)],
+    show_combat_stats_GM_handler = ConversationHandler(
+        entry_points = [CommandHandler('combat_stats_gm', who)],
         states = {
-            COMBAT_STATS: [MessageHandler(Filters.text & (~ Filters.command), combat_stats)]
+            COMBAT_STATS: [MessageHandler(Filters.text & (~ Filters.command), show_combat_stats)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
-    show_abilities_handler = ConversationHandler(
-        entry_points = [CommandHandler('abilities', who)],
+    show_abilities_GM_handler = ConversationHandler(
+        entry_points = [CommandHandler('abilities_gm', who)],
         states = {
             SHOW_ABILITIES: [MessageHandler(Filters.text & (~ Filters.command), show_abilities)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
-    show_unique_thing_handler = ConversationHandler(
-        entry_points = [CommandHandler('unique_thing', who)],
+    show_unique_thing_GM_handler = ConversationHandler(
+        entry_points = [CommandHandler('unique_thing_gm', who)],
         states = {
             SHOW_UNIQUE_THING: [MessageHandler(Filters.text & (~ Filters.command), show_unique_thing)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
-    show_icons_relationships_handler = ConversationHandler(
-        entry_points = [CommandHandler('icons_relationships', who)],
+    show_icons_relationships_GM_handler = ConversationHandler(
+        entry_points = [CommandHandler('icons_relationships_gm', who)],
         states = {
             SHOW_ICONS_RELATIONSHIPS: [MessageHandler(Filters.text & (~ Filters.command), show_icons_relationships)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
-    show_backgrounds_handler = ConversationHandler(
-        entry_points = [CommandHandler('backgrounds', who)],
+    show_backgrounds_GM_handler = ConversationHandler(
+        entry_points = [CommandHandler('backgrounds_gm', who)],
         states = {
             SHOW_BACKROUNDS: [MessageHandler(Filters.text & (~ Filters.command), show_backgrounds)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
-    update_player_coins_handler = ConversationHandler(
-        entry_points = [CommandHandler('coins', who)],
+    player_coins_GM_handler = ConversationHandler(
+        entry_points = [CommandHandler('coins_gm', who)],
         states = {
-            SHOW_COINS: [MessageHandler(Filters.text & (~ Filters.command), show_player_coins)],
+            SHOW_COINS: [MessageHandler(Filters.text & (~ Filters.command), show_coins)],
             UPDATE_COINS: [MessageHandler(Filters.regex('^(Yes|No)$') & (~ Filters.command), update_player_coins)],
             UPDATE_PP: [MessageHandler(Filters.text & (~ Filters.command), update_player_pp)],
             UPDATE_GP: [MessageHandler(Filters.text & (~ Filters.command), update_player_gp)],
@@ -1818,16 +1935,33 @@ def main() -> None:
         fallbacks = [CommandHandler('cancel', cancel)]
     )
 
+    show_inventory_GM_handler = ConversationHandler(
+        entry_points = [CommandHandler('inventory_gm', who)],
+        states = {
+            SHOW_INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), show_inventory)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
     dispatcher.add_handler(set_game_handler)
     dispatcher.add_handler(set_pc_handler)
-    dispatcher.add_handler(combat_stats_handler)
-    dispatcher.add_handler(show_abilities_handler)
-    dispatcher.add_handler(show_unique_thing_handler)
-    dispatcher.add_handler(show_icons_relationships_handler)
-    dispatcher.add_handler(show_backgrounds_handler)
-    dispatcher.add_handler(update_player_coins_handler)
+    dispatcher.add_handler(CommandHandler('combat_stats', show_combat_stats))
+    dispatcher.add_handler(show_combat_stats_GM_handler)
+    dispatcher.add_handler(CommandHandler('abilities', show_abilities))
+    dispatcher.add_handler(show_abilities_GM_handler)
+    dispatcher.add_handler(CommandHandler('unique_thing', show_unique_thing))
+    dispatcher.add_handler(show_unique_thing_GM_handler)
+    dispatcher.add_handler(CommandHandler('icons_relationships', show_icons_relationships))
+    dispatcher.add_handler(show_icons_relationships_GM_handler)
+    dispatcher.add_handler(CommandHandler('backgrounds', show_backgrounds))
+    dispatcher.add_handler(show_backgrounds_GM_handler)
+    dispatcher.add_handler(CommandHandler('coins', show_coins))
+    dispatcher.add_handler(player_coins_GM_handler)
+    dispatcher.add_handler(CommandHandler('inventory', show_inventory))
+    dispatcher.add_handler(show_inventory_GM_handler)
+    dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
 
     # Start the Bot
