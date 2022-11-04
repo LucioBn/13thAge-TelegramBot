@@ -50,6 +50,7 @@ SHOW_BACKROUNDS = 0
 SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
 SHOW_INVENTORY = 0
 CATEGORY = 0
+CATEGORY_BUY, CHECK_COINS, UPDATE_INVENTORY = range(3)
 
 
 # start of /start
@@ -186,7 +187,7 @@ def set_game(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if not is_the_gm(user.name, update):
+    if not is_the_gm(user.name):
         update.message.reply_text(
             'Only the GM can set the game.',
             reply_markup = ReplyKeyboardRemove()
@@ -442,7 +443,7 @@ def set_pc(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         update.message.reply_text(
             'You are the game master, this command is only for the players.'
         )
@@ -1037,7 +1038,7 @@ def who(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if not is_the_gm(user.name, update):
+    if not is_the_gm(user.name):
         update.message.reply_text(
             'Only the GM can set the game.',
             reply_markup = ReplyKeyboardRemove()
@@ -1114,8 +1115,11 @@ def show_combat_stats(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
     else:
         nickname = user.name
 
@@ -1158,8 +1162,11 @@ def show_abilities(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
     else:
         nickname = user.name
 
@@ -1177,8 +1184,11 @@ def show_unique_thing(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
     else:
         nickname = user.name
 
@@ -1196,8 +1206,11 @@ def show_icons_relationships(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
     else:
         nickname = user.name
 
@@ -1224,8 +1237,11 @@ def show_backgrounds(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
     else:
         nickname = user.name
 
@@ -1256,7 +1272,7 @@ def show_coins(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         nickname = who_nickname(update.message.text, update)
     else:
         nickname = user.name
@@ -1274,7 +1290,7 @@ def show_coins(update: Update, context: CallbackContext) -> int:
         text = str(players[nickname]["PC's name"]) + " has got:" + message()
     )
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         global nick_4_coins
         nick_4_coins = nickname
 
@@ -1459,7 +1475,7 @@ def show_inventory(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if is_the_gm(user.name, update):
+    if is_the_gm(user.name):
         nickname = who_nickname(update.message.text, update)
 
         if nickname == -1:
@@ -1526,6 +1542,157 @@ def show_category(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 # end /market
+
+# start /buy
+
+def buy(update: Update, context: CallbackContext) -> int:
+    """Asks the category of the item that the player wants to buy."""
+
+    user = update.message.from_user
+
+    if is_the_gm(user.name):
+        update.message.reply_text(
+            'Only the players can use this command.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for category in market.equipment.keys():
+        reply_keyboard.append([category])
+
+    update.message.reply_text(
+        'In which category is the item that you want to buy?',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the category.'
+        )
+    )
+
+    return CATEGORY_BUY
+
+
+item_category = ''
+
+
+def category_buy(update: Update, context: CallbackContext) -> int:
+    """Asks which item the player wants to buy from the chosen category."""
+
+    user = update.message.from_user
+
+    global item_category
+    item_category = update.message.text
+
+    reply_keyboard = []
+    for item in market.equipment[update.message.text].keys():
+        reply_keyboard.append([item])
+
+    update.message.reply_text(
+        'Choose the item to buy?',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the item.'
+        )
+    )
+
+    return CHECK_COINS
+
+
+item_bought = ''
+
+
+def check_coins(update: Update, context: CallbackContext) -> int:
+    """Checks if the player has enough money and take them from him."""
+
+    user = update.message.from_user
+
+    global item_bought
+    item_bought = update.message.text
+
+    if more_money(user.name, market.equipment[item_category][item_bought]['value'], market.equipment[item_category][item_bought]['coin']):
+        reply_keyboard = [
+            ['Yes'],
+            ['No']
+        ]
+
+        update.message.reply_text(
+            'You have enough money, do you want to buy it?',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Yes or No.'
+            )
+        )
+
+        return UPDATE_INVENTORY
+    else:
+        update.message.reply_text(
+            'You have not enough money.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+
+def update_inventory(update: Update, context: CallbackContext) -> int:
+    """Checks if there is an empty space in the inventory and stores there the item. If there's not, asks the player to free one."""
+
+    global item_category
+    global item_bought
+
+    user = update.message.from_user
+
+    if update.message.text == 'No':
+        update.message.reply_text(
+            'Okay.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+    else:
+        for slot in players[user.name]['Inventory']:
+            if update.message.text == players[user.name]['Inventory'][slot]:
+                players[user.name]['Inventory'][slot] = 'empty'
+                break
+
+    free_slot = -1
+    for slot in players[user.name]['Inventory']:
+        if players[user.name]['Inventory'][slot] == 'empty':
+            free_slot = slot
+            break
+
+    if free_slot == -1:
+        reply_keyboard = []
+        for slot in players[user.name]["Inventory"].keys():
+                reply_keyboard.append([players[user.name]["Inventory"][slot]])
+
+        def message() -> str:
+            s = ''
+            for idx, slot in enumerate(players[user.name]["Inventory"].keys()):
+                s += slot + str(idx) + ': ' + players[user.name]["Inventory"][slot] + '\n'
+
+            return s
+
+        update.message.reply_text(
+            f'Free a slot in your inventory:\n{message()}'
+            'Choose the item to leave?',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the item.'
+            )
+        )
+
+        return UPDATE_INVENTORY
+
+    players[user.name]['Inventory'][free_slot] = item_bought
+
+    item_category = ''
+    item_bought = ''
+
+    update.message.reply_text(
+        'Item bought, now it is in your inventory.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
+# end /buy
 
 
 # /cancel
@@ -1606,7 +1773,7 @@ def auto_set_pc(update: Update, context: CallbackContext) -> int:
 
 # Usefull
 
-def is_the_gm(username: str, update) -> bool:
+def is_the_gm(username: str) -> bool:
     """Return true if the user is the gm and sends a message, saying them that they can't play that action."""
 
     # write_players_dict()
@@ -1784,6 +1951,34 @@ def who_nickname(name, update):
 
     return ConversationHandler.END
 
+
+def more_money(username: str, value: int, currency: str) -> bool:
+    """Return true if the player has more money than the passed."""
+
+    if convert_player_coins_in_cp(username) >= convert_in_cp(value, currency):
+        return True
+    
+    return False
+
+
+def convert_player_coins_in_cp(username: str) -> int:
+    """Convert all the money of username in cp."""
+
+    return players[username]['Coins']['pp'] * 1000 + players[username]['Coins']['gp'] * 100 + players[username]['Coins']['sp'] * 10 + players[username]['Coins']['cp']
+
+
+def convert_in_cp(value: int, currency: str) -> int:
+    """Convert the currency's value in cp's value."""
+
+    if currency == 'cp':
+        return value
+    if currency == 'sp':
+        return value * 10
+    if currency == 'gp':
+        return value * 100
+    if currency == 'pp':
+        return value * 1000
+    
 
 # start of update combat stats
 
@@ -1993,7 +2188,17 @@ def main() -> None:
     show_market_handler = ConversationHandler(
         entry_points = [CommandHandler('market', show_market)],
         states = {
-            CATEGORY: [MessageHandler(Filters.text & (~ Filters.command), show_category)]
+            CATEGORY: [MessageHandler(Filters.regex(accettable_elements(market.equipment)) & (~ Filters.command), show_category)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+    
+    buy_handler = ConversationHandler(
+        entry_points = [CommandHandler('buy', buy)],
+        states = {
+            CATEGORY_BUY: [MessageHandler(Filters.regex(accettable_elements(market.equipment)) & (~ Filters.command), category_buy)],
+            CHECK_COINS: [MessageHandler(Filters.text & (~ Filters.command), check_coins)],
+            UPDATE_INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), update_inventory)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
@@ -2017,6 +2222,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler('inventory', show_inventory))
     dispatcher.add_handler(show_inventory_GM_handler)
     dispatcher.add_handler(show_market_handler)
+    dispatcher.add_handler(buy_handler)
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
 

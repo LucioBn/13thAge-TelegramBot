@@ -4,7 +4,7 @@ equipment = {
             "value": 1,
             "coin": "sp"
         },
-        "Money pouch (small)": {
+        "Money pouch - small": {
             "value": 3,
             "coin": "sp"
         },
@@ -16,7 +16,7 @@ equipment = {
             "value": 3,
             "coin": "sp"
         },
-        "Road Rations (5 days)": {
+        "Road Rations - 5 days": {
             "value": 25,
             "coin": "sp"
         },
@@ -43,7 +43,7 @@ equipment = {
             "value": 1,
             "coin": "sp"
         },
-        "Blanket (wool)": {
+        "Blanket - wool": {
             "value": 5,
             "coin": "sp"
         },
@@ -51,11 +51,11 @@ equipment = {
             "value": 1,
             "coin": "cp"
         },
-        "Chain, dwarven forged (10 ft)": {
+        "Chain, dwarven forged - 10 ft": {
             "value": 10,
             "coin": "gp"
         },
-        "Chain, iron (10 ft)": {
+        "Chain, iron - 10 ft": {
             "value": 5,
             "coin": "gp"
         },
@@ -71,27 +71,27 @@ equipment = {
             "value": 55,
             "coin": "gp"
         },
-        "Clothing, rain cloak (elven)": {
+        "Clothing, rain cloak - elven": {
             "value": 5,
             "coin": "gp"
         },
-        "Crowbar (iron)": {
+        "Crowbar - iron": {
             "value": 3,
             "coin": "gp"
         },
-        "Flask (crystal)": {
+        "Flask - crystal": {
             "value": 54,
             "coin": "gp"
         },
-        "Flask (glass)": {
+        "Flask - glass": {
             "value": 5,
             "coin": "sp"
         },
-        "Flask (pottery)": {
+        "Flask - pottery": {
             "value": 5,
             "coin": "cp"
         },
-        "Grappling hook (iron)": {
+        "Grappling hook - iron": {
             "value": 1,
             "coin": "gp"
         },
@@ -99,15 +99,15 @@ equipment = {
             "value": 3,
             "coin": "sp"
         },
-        "Holy symbol/implement (adv)": {
+        "Holy symbol/implement - adv": {
             "value": 10,
             "coin": "gp"
         },
-        "Holy Symbol/Implement (chp)": {
+        "Holy Symbol/Implement - chp": {
             "value": 100,
             "coin": "gp"
         },
-        "Holy symbol/implement (epic)": {
+        "Holy symbol/implement - epic": {
             "value": 1000,
             "coin": "gp"
         },
@@ -115,15 +115,15 @@ equipment = {
             "value": 1,
             "coin": "sp"
         },
-        "Lantern (common)": {
+        "Lantern - common": {
             "value": 8,
             "coin": "sp"
         },
-        "Lantern (hooded)": {
+        "Lantern - hooded": {
             "value": 5,
             "coin": "gp"
         },
-        "Lantern Oil (4 hrs)": {
+        "Lantern Oil - 4 hrs": {
             "value": 1,
             "coin": "sp"
         },
@@ -139,15 +139,15 @@ equipment = {
             "value": 2,
             "coin": "gp"
         },
-        "Musical Instrument (intricate)": {
+        "Musical Instrument - intricate": {
             "value": 15,
             "coin": "gp"
         },
-        "Musical Instrument (simple)": {
+        "Musical Instrument - simple": {
             "value": 3,
             "coin": "gp"
         },
-        "Pipeweed (1 use)": {
+        "Pipeweed - 1 use": {
             "value": 2,
             "coin": "cp"
         },
@@ -167,15 +167,15 @@ equipment = {
             "value": 2,
             "coin": "sp"
         },
-        "Spellbook (adventurer)": {
+        "Spellbook - adventurer": {
             "value": 10,
             "coin": "gp"
         },
-        "Spellbook (champion)": {
+        "Spellbook - champion": {
             "value": 100,
             "coin": "gp"
         },
-        "Spellbook (epic)": {
+        "Spellbook - epic": {
             "value": 1000,
             "coin": "gp"
         },
@@ -191,30 +191,30 @@ equipment = {
             "value": 10,
             "coin": "gp"
         },
-        "Thieves’ tools (adventurer)": {
+        "Thieves’ tools - adventurer": {
             "value": 2,
             "coin": "gp"
         },
-        "Thieves’ tools (champion)": {
+        "Thieves’ tools - champion": {
             "value": 20,
             "coin": "gp"
         },
-        "Thieves’ tools (epic)": {
+        "Thieves’ tools - epic": {
             "value": 200,
             "coin": "gp"
         },
-        "Torch (1 hr.)": {
+        "Torch - 1 hr.": {
             "value": 1,
             "coin": "gp"
         },
-        "Torch (6 min)": {
+        "Torch - 6 min": {
             "value": 1,
             "coin": "sp"
         }
     },
 
     "Food/Lodging": {
-        "Road rations (1 day)": {
+        "Road rations - 1 day": {
             "value": 5,
             "coin": "sp"
         },
@@ -230,35 +230,35 @@ equipment = {
             "value": 8,
             "coin": "sp"
         },
-        "Meal, feast (for 5)": {
+        "Meal, feast - for 5": {
             "value": 8,
             "coin": "gp"
         },
-        "Ale/beer, poor (pitcher)": {
+        "Ale/beer, poor - pitcher": {
             "value": 2,
             "coin": "cp"
         },
-        "Ale/beer, good (pitcher)": {
+        "Ale/beer, good - pitcher": {
             "value": 6,
             "coin": "cp"
         },
-        "Ale/beer, dwarven (pitcher)": {
+        "Ale/beer, dwarven - pitcher": {
             "value": 2,
             "coin": "gp"
         },
-        "Wine, poor (bottle)": {
+        "Wine, poor - bottle": {
             "value": 4,
             "coin": "cp"
         },
-        "Wine, good (bottle)": {
+        "Wine, good - bottle": {
             "value": 1,
             "coin": "sp"
         },
-        "Wine, elven (bottle)": {
+        "Wine, elven - bottle": {
             "value": 3,
             "coin": "gp"
         },
-        "Inn (per person per day)": {
+        "Inn - per person per day": {
             "value": 0,
             "coin": "sp"
         },
@@ -274,13 +274,13 @@ equipment = {
             "value": 4,
             "coin": "gp"
         },
-        "Suite (sleeps 4 to 8)": {
+        "Suite - sleeps 4 to 8": {
             "value": 13,
             "coin": "gp"
         }
     },
 
-    "Mounts (including gear)": {
+    "Mounts - including gear": {
         "Dog, guard": {
             "value": 10,
             "coin": "gp"
@@ -301,13 +301,13 @@ equipment = {
             "value": 80,
             "coin": "gp"
         },
-        "Feed for mount (per day)": {
+        "Feed for mount - per day": {
             "value": 3,
             "coin": "cp"
         }
     },
 
-    "Weapons, Melee (average quality)": {
+    "Weapons, Melee - average quality": {
         "Battle Gauntlets": {
             "value": 4,
             "coin": "gp"
@@ -410,7 +410,7 @@ equipment = {
         }
     },
 
-    "Weapons, Ranged (average quality)": {
+    "Weapons, Ranged - average quality": {
         "Bow: Longbow": {
             "value": 14,
             "coin": "gp"
@@ -457,7 +457,7 @@ equipment = {
         }
     },
 
-    "Armor (average quality)": {
+    "Armor - average quality": {
         "Cloth/Padded": {
             "value": 1,
             "coin": "gp"
@@ -505,7 +505,7 @@ equipment = {
             "value": 1,
             "coin": "gp"
         },
-        "Bodyguard (d)": {
+        "Bodyguard - d": {
             "value": 2,
             "coin": "gp"
         },
@@ -517,15 +517,15 @@ equipment = {
             "value": 2,
             "coin": "gp"
         },
-        "Courier (intercity)": {
+        "Courier - intercity": {
             "value": 5,
             "coin": "sp"
         },
-        "Courier (long distance)": {
+        "Courier - long distance": {
             "value": 5,
             "coin": "gp"
         },
-        "Courier (urchin)": {
+        "Courier - urchin": {
             "value": 5,
             "coin": "cp"
         },
@@ -533,31 +533,31 @@ equipment = {
             "value": 50,
             "coin": "gp"
         },
-        "Guide, urban (d)": {
+        "Guide, urban - d": {
             "value": 1,
             "coin": "gp"
         },
-        "Guide, wilderness (d)": {
+        "Guide, wilderness - d": {
             "value": 5,
             "coin": "gp"
         },
-        "Herald (in city only)": {
+        "Herald - in city only": {
             "value": 1,
             "coin": "gp"
         },
-        "Lantern bearer (in city) (d)": {
+        "Lantern bearer - in city - d": {
             "value": 5,
             "coin": "sp"
         },
-        "Mercenary, soldier (d)": {
+        "Mercenary, soldier - d": {
             "value": 5,
             "coin": "gp"
         },
-        "Mercenary, thug (d)": {
+        "Mercenary, thug - d": {
             "value": 1,
             "coin": "gp"
         },
-        "Moneylender (cost per 100gp)": {
+        "Moneylender - cost per 100gp": {
             "value": 5,
             "coin": "gp"
         },
@@ -565,7 +565,7 @@ equipment = {
             "value": 25,
             "coin": "gp"
         },
-        "Personal chef (d)": {
+        "Personal chef - d": {
             "value": 1,
             "coin": "gp"
         },
@@ -577,11 +577,13 @@ equipment = {
             "value": 1,
             "coin": "gp"
         },
-        "Cleric (divine spells/rituals)": {
-            "value": "varies"
+        "Cleric - divine spells/rituals": {
+            "value": 20,
+            "coin": "gp"
         },
-        "Wizard (arcane spells/rituals)": {
-            "value": "varies"
+        "Wizard - arcane spells/rituals": {
+            "value": 20,
+            "coin": "gp"
         }
     }
     
