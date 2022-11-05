@@ -51,6 +51,7 @@ SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
 SHOW_INVENTORY = 0
 CATEGORY = 0
 CATEGORY_BUY, CHECK_COINS, UPDATE_INVENTORY = range(3)
+PC_TO_TEST, ABILITY_TO_TEST, PC_BACKGROUND_TO_TEST, DC_USED_TO_TEST = range(4)
 
 
 # start of /start
@@ -81,8 +82,8 @@ def join_game(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
 
     global chats
-    if update.effective_chat.id not in chats:
-        chats.append(update.effective_chat.id)
+    if user.name not in chats.keys():
+        chats[user.name] = user
 
     if len(players) != 0:
         for username in players.keys():
@@ -465,11 +466,15 @@ def set_pc(update: Update, context: CallbackContext) -> int:
 
     global players
     players[user.name] = {}
+
+    players[user.name]["Level"] = 1
+
     players[user.name]["Inventory"] = {}
     i = 0
     while i != inventory_size:
         players[user.name]['Inventory']['Item ' + str(i + 1)] = 'empty'
         i += 1
+        
     players[user.name]["Coins"] = {}
     players[user.name]["Coins"]["pp"] = beginning_pp
     players[user.name]["Coins"]["gp"] = beginning_gp
@@ -1048,7 +1053,7 @@ def who(update: Update, context: CallbackContext) -> int:
 
     if len(players.keys()) == 0:
         update.message.reply_text(
-            'No players joined yet the game.',
+            'No players joined the game yet.',
             reply_markup = ReplyKeyboardRemove()
         )
 
@@ -1695,6 +1700,256 @@ def update_inventory(update: Update, context: CallbackContext) -> int:
 # end /buy
 
 
+# start /skill_check_gm
+
+def skill_check(update: Update, context: CallbackContext) -> int:
+    """Asks the GM to choose which player has to be tested."""
+
+    user = update.message.from_user
+
+    if not is_the_gm(user.name):
+        update.message.reply_text(
+            'Only the GM can test a PC.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for nickname in players.keys():
+        if players[nickname] != 'Game Master':
+            reply_keyboard.append([players[nickname]["PC's name"]])
+
+    if len(reply_keyboard) == 0:
+        update.message.reply_text(
+            'No players joined the game yet.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+    
+    update.message.reply_text(
+        'Choose the PC to test or write player nickname.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the PC.'
+        )
+    )
+
+    return PC_TO_TEST
+
+
+nick_to_be_tested = ''
+ability_to_be_tested = ''
+background_to_be_tested = ''
+dc_used_to_test_var = ''
+
+
+def pc_to_test(update: Update, context: CallbackContext) -> int:
+    """Stores the player to be tested and ask which ability is going to be tested."""
+
+    user = update.message.from_user
+
+    global nick_to_be_tested
+    nick_to_be_tested = who_nickname(update.message.text, update)
+
+    reply_keyboard = []
+    for ability in abilities.abilities:
+        reply_keyboard.append([ability])
+
+    update.message.reply_text(
+        'Choose the ability to test.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the ability.'
+        )
+    )
+
+    return ABILITY_TO_TEST
+
+
+def ability_to_test(update: Update, context: CallbackContext) -> int:
+    """Stores the ability to be tested, asks to the PC to choose the background and to the GM asks to choose the DC."""
+
+    user = update.message.from_user
+
+    global ability_to_be_tested
+    ability_to_be_tested = update.message.text
+
+    def message() -> str:
+        s = nick_to_be_tested + '\n'
+        s += 'The GM wants to test your ' + ability_to_be_tested + '.\n'
+        s += 'When you are ready to send your background, send /background_for_skill_check.'
+
+        return s
+
+    context.bot.send_message(
+        chat_id = chats[nick_to_be_tested]['id'],
+        text = message(), 
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    update.message.reply_text(
+        'Choose the value of the DC (Difficulty Class).',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return DC_USED_TO_TEST
+
+
+def dc_used_to_test(update: Update, context: CallbackContext) -> int:
+    """Receive the DC value (check if it's a num > 0) and communicate if the PC passed the test."""
+
+    global background_to_be_tested, dc_used_to_test_var
+
+    user = update.message.from_user
+
+    try:
+        dc_used_to_test_var = int(update.message.text)
+        if dc_used_to_test_var < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return DC_USED_TO_TEST
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return DC_USED_TO_TEST
+
+    if background_for_skill_check == '':
+        update.message.reply_text(
+            f'Wait {nick_to_be_tested} to send the chosen background.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+    else:
+        update.message.reply_text(
+            f'Wait {nick_to_be_tested} to choose the background.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+    return ConversationHandler.END
+    
+
+
+def calculate_skill_check(update: Update, context: CallbackContext) -> int:
+    """Calculate if the PC passed the test."""
+    
+    global nick_to_be_tested, ability_to_be_tested, background_to_be_tested, dc_used_to_test_var
+
+    user = update.message.from_user
+
+    if dc_used_to_test_var == '':
+        update.message.reply_text(
+            'You can\'t access to this command.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    if roll_d_n_faces(20) + players[nick_to_be_tested][ability_to_be_tested] + players[nick_to_be_tested]["Backgrounds"][background_to_be_tested] + players[nick_to_be_tested]["Level"] >= dc_used_to_test_var:
+        message = 'Test successfully passed.'
+    else:
+        message = 'Test not passed.'
+
+    update.message.reply_text(
+        message,
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    context.bot.send_message(
+        chat_id = chats[nick_to_be_tested]['id'],
+        text = message, 
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    nick_to_be_tested = ''
+    ability_to_be_tested = ''
+    background_to_be_tested = ''
+    dc_used_to_test_var = ''
+
+    return ConversationHandler.END
+
+
+def background_for_skill_check(update: Update, context: CallbackContext) -> int:
+    """Asks to the PC to choose the background."""
+
+    user = update.message.from_user
+
+    if user.name != nick_to_be_tested:
+        update.message.reply_text(
+            'You can\'t access to this command.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for background in players[nick_to_be_tested]["Backgrounds"]:
+        reply_keyboard.append([background])
+
+    def message():
+        s = "Tap in the background to test:"
+        for background in players[nick_to_be_tested]["Backgrounds"]:
+            s += '\n' + background + ' -> ' + str(players[nick_to_be_tested]["Backgrounds"][background])
+
+        return s
+
+    update.message.reply_text(
+        message(),
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the background.'
+        )
+    )
+
+    return PC_BACKGROUND_TO_TEST
+
+
+def pc_background_to_test(update: Update, context: CallbackContext) -> int:
+    """Checks if the right player answered, then stores the background to be tested."""
+
+    user = update.message.from_user
+
+    global background_to_be_tested
+
+    try:
+        background_to_be_tested = update.message.text
+        
+        if background_to_be_tested not in players[nick_to_be_tested]['Backgrounds']:
+            raise Exception()
+    except Exception as error:
+        update.message.reply_text(
+            'Not a background that you have.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return PC_BACKGROUND_TO_TEST
+
+    update.message.reply_text(
+        'You will receive the result when the GM will send the DC.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    if dc_used_to_test_var != '':
+        message = nick_to_be_tested +  ' has chosen the background:\n' + background_to_be_tested + ' value -> ' + str(players[nick_to_be_tested]["Backgrounds"][background_to_be_tested]) + ').\n' + 'Send /calculate_skill_check to calculate if the PC passed the test.'
+        gm_nick: str
+        for nick in players.keys():
+            if players[nick] == 'Game Master':
+                gm_nick = nick
+
+        context.bot.send_message(
+            chat_id = chats[gm_nick]['id'],
+            text = message, 
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+    return ConversationHandler.END
+
+
 # /cancel
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -1735,11 +1990,15 @@ def auto_set_pc(update: Update, context: CallbackContext) -> int:
 
     global players
     players[user.name] = {}
+
+    players[user.name]["Level"] = 1
+
     players[user.name]["Inventory"] = {}
     i = 0
     while i != inventory_size:
         players[user.name]['Inventory']['Item ' + str(i + 1)] = 'empty'
         i += 1
+
     players[user.name]["Coins"] = {}
     players[user.name]["Coins"]["pp"] = beginning_pp
     players[user.name]["Coins"]["gp"] = beginning_gp
@@ -2046,14 +2305,14 @@ def update_initiative_bonus(username):
 # end of update combat stats
 
 
-chats = []
+chats = {}
 
 
 def send_to_all(update: Update, context: CallbackContext, message: str) -> None:
     """Sends the message to all the connected chat."""
 
-    for chat in chats:
-        context.bot.send_message(chat_id = chat,text = message)
+    for username in chats.keys():
+        context.bot.send_message(chat_id = chats[username]['id'], text = message)
 
 
 # Gloabal variables
@@ -2202,6 +2461,25 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    skill_check_gm_handler = ConversationHandler(
+        entry_points = [CommandHandler('skill_check_gm', skill_check)],
+        states = {
+            PC_TO_TEST: [MessageHandler(Filters.text & (~ Filters.command), pc_to_test)],
+            ABILITY_TO_TEST: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)) & (~ Filters.command), ability_to_test)],
+            PC_BACKGROUND_TO_TEST: [MessageHandler(Filters.text & (~ Filters.command), pc_background_to_test)],
+            DC_USED_TO_TEST: [MessageHandler(Filters.text & (~ Filters.command), dc_used_to_test)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+    
+    background_for_skill_check_handler = ConversationHandler(
+        entry_points = [CommandHandler('background_for_skill_check', background_for_skill_check)],
+        states = {
+            PC_BACKGROUND_TO_TEST: [MessageHandler(Filters.text & (~ Filters.command), pc_background_to_test)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
@@ -2223,6 +2501,9 @@ def main() -> None:
     dispatcher.add_handler(show_inventory_GM_handler)
     dispatcher.add_handler(show_market_handler)
     dispatcher.add_handler(buy_handler)
+    dispatcher.add_handler(skill_check_gm_handler)
+    dispatcher.add_handler(background_for_skill_check_handler)
+    dispatcher.add_handler(CommandHandler("calculate_skill_check", calculate_skill_check))
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
 
