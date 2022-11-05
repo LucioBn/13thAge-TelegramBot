@@ -51,8 +51,10 @@ SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
 SHOW_INVENTORY = 0
 CATEGORY = 0
 CATEGORY_BUY, CHECK_COINS, UPDATE_INVENTORY = range(3)
-PC_TO_TEST, ABILITY_TO_TEST, PC_BACKGROUND_TO_TEST, DC_USED_TO_TEST = range(4)
-
+PC_TO_TEST, ABILITY_TO_TEST, DC_USED_TO_TEST = range(3)
+PC_BACKGROUND_TO_TEST = 0
+PC_TO_CHANGE_LEVEL_TO, UPGRADE_OR_DOWNGRADE = range(2)
+SHOW_LEVEL_GM = 0
 
 # start of /start
 
@@ -1045,7 +1047,7 @@ def who(update: Update, context: CallbackContext) -> int:
 
     if not is_the_gm(user.name):
         update.message.reply_text(
-            'Only the GM can set the game.',
+            'Only the GM can access to the command.',
             reply_markup = ReplyKeyboardRemove()
         )
 
@@ -1089,6 +1091,10 @@ def who(update: Update, context: CallbackContext) -> int:
             return "to know and update his PC's coins"
         if command == '/inventory_gm':
             return "to know his PC's inventory"
+        if command == '/change_level_gm':
+            return "to change PC's level"
+        if command == '/level_gm':
+            return "to know PC's level"
 
     update.message.reply_text(
         f'Tap in a PC\'s name or write a player name {request(command)}.',
@@ -1111,6 +1117,10 @@ def who(update: Update, context: CallbackContext) -> int:
         return SHOW_COINS
     if command == '/inventory_gm':
         return SHOW_INVENTORY
+    if command == '/change_level_gm':
+        return PC_TO_CHANGE_LEVEL_TO
+    if command == '/level_gm':
+        return SHOW_LEVEL_GM
 
 
 # /combat_stats
@@ -1838,7 +1848,7 @@ def dc_used_to_test(update: Update, context: CallbackContext) -> int:
 
 def calculate_skill_check(update: Update, context: CallbackContext) -> int:
     """Calculate if the PC passed the test."""
-    
+
     global nick_to_be_tested, ability_to_be_tested, background_to_be_tested, dc_used_to_test_var
 
     user = update.message.from_user
@@ -1946,6 +1956,104 @@ def pc_background_to_test(update: Update, context: CallbackContext) -> int:
             text = message, 
             reply_markup = ReplyKeyboardRemove()
         )
+
+    return ConversationHandler.END
+
+
+nick_4_level = ''
+
+def pc_to_change_level_to(update: Update, context: CallbackContext) -> int:
+    """Stores the PC's name and asks if the GM wants to upgrade or downgrade the level of the chosen PC."""
+
+    global nick_4_level
+
+    user = update.message.from_user
+
+    nick_4_level = who_nickname(update.message.text, update)
+
+    if nick_4_level == -1:
+        update.message.reply_text(
+            f'{update.message.text} is not a PC or a player of the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = [
+        ["Upgrade"],
+        ["Downgrade"]
+    ]
+
+    update.message.reply_text(
+        'Do you want to upgrade or downgrade ' + players[nick_4_level]["PC's name"] + ' level?\n' + 'Actual level -> ' + str(players[nick_4_level]["Level"]) + '.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Upgrade or downgrade.'
+        )
+    )
+
+    return UPGRADE_OR_DOWNGRADE
+
+
+def upgrade_or_downgrade(update: Update, context: CallbackContext) -> int:
+    """Checks if upgrade or downgrade the level and do it."""
+
+    global players, nick_4_level
+
+    user = update.message.from_user
+
+    if update.message.text == 'Upgrade':
+        if players[nick_4_level]['Level'] - 1 == 11:
+            update.message.reply_text(
+                "Level can't be more than 10!",
+                reply_markup = ReplyKeyboardRemove()
+            )
+
+            return ConversationHandler.END
+        
+        players[nick_4_level]['Level'] += 1
+
+        update.message.reply_text(
+            'Level upgraded. Now ' + players[nick_4_level]["PC's name"] + ' level is ' + str(players[nick_4_level]["Level"]) + '.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+    else:
+        if players[nick_4_level]['Level'] - 1 == 0:
+            update.message.reply_text(
+                "Level can't be less than 1!",
+                reply_markup = ReplyKeyboardRemove()
+            )
+
+            return ConversationHandler.END
+
+        players[nick_4_level]['Level'] -= 1
+
+        update.message.reply_text(
+            'Level upgraded. Now ' + players[nick_4_level]["PC's name"] + ' level is ' + str(players[nick_4_level]["Level"]) + '.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+    nick_4_level = ''
+
+    return ConversationHandler.END
+
+
+def show_level(update: Update, context: CallbackContext) -> int:
+    """Show the player level."""
+
+    user = update.message.from_user
+
+    if is_the_gm(user.name):
+        nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
+    else:
+        nickname = user.name
+
+    update.message.reply_text(
+        players[nickname]["PC's name"] + "'s level is " + str(players[nickname]["Level"]) + '.',
+        reply_markup = ReplyKeyboardRemove()
+    )
 
     return ConversationHandler.END
 
@@ -2185,7 +2293,7 @@ def who_nickname(name, update):
 
     command = update.message.text
 
-    if command == '/combat_stats' or command == '/abilities' or command == '/unique_thing' or command == '/icons_relationships' or command == '/backgrounds' or command == '/coins' or command == '/inventory':
+    if command == '/combat_stats' or command == '/abilities' or command == '/unique_thing' or command == '/icons_relationships' or command == '/backgrounds' or command == '/coins' or command == '/inventory' or command == '/level':
         update.message.reply_text(
             'Only the players can use this command.',
             reply_markup = ReplyKeyboardRemove()
@@ -2480,6 +2588,23 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    change_level_handler = ConversationHandler(
+        entry_points = [CommandHandler('change_level_gm', who)],
+        states = {
+            PC_TO_CHANGE_LEVEL_TO: [MessageHandler(Filters.text & (~ Filters.command), pc_to_change_level_to)],
+            UPGRADE_OR_DOWNGRADE: [MessageHandler(Filters.regex('^(Upgrade|Downgrade)$') & (~ Filters.command), upgrade_or_downgrade)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+    
+    show_level_gm_handler = ConversationHandler(
+        entry_points = [CommandHandler('level_gm', who)],
+        states = {
+            SHOW_LEVEL_GM: [MessageHandler(Filters.text & (~ Filters.command), show_level)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
@@ -2504,6 +2629,9 @@ def main() -> None:
     dispatcher.add_handler(skill_check_gm_handler)
     dispatcher.add_handler(background_for_skill_check_handler)
     dispatcher.add_handler(CommandHandler("calculate_skill_check", calculate_skill_check))
+    dispatcher.add_handler(change_level_handler)
+    dispatcher.add_handler(CommandHandler("level", show_level))
+    dispatcher.add_handler(show_level_gm_handler)
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
 
