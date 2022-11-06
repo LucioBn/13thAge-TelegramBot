@@ -50,7 +50,7 @@ SHOW_BACKROUNDS = 0
 SHOW_COINS, UPDATE_COINS, UPDATE_PP, UPDATE_GP, UPDATE_SP, UPDATE_CP = range(6)
 SHOW_INVENTORY = 0
 CATEGORY = 0
-CATEGORY_BUY, CHECK_COINS, UPDATE_INVENTORY = range(3)
+CATEGORY_BUY, CHECK_COINS, UPDATE_INVENTORY, USE_NEW_WEAPON = range(4)
 PC_TO_TEST, ABILITY_TO_TEST, DC_USED_TO_TEST = range(3)
 PC_BACKGROUND_TO_TEST = 0
 PC_TO_CHANGE_LEVEL_TO, UPGRADE_OR_DOWNGRADE = range(2)
@@ -582,6 +582,7 @@ def class_(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
 
     update_players_dict(user.name, 'Class', update.message.text)
+    update_players_dict(user.name, 'Basic Attacks', classes.classes[players[user.name]['Class']]['Basic Attacks'])
      
     reply_keyboard = []
     for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
@@ -646,8 +647,6 @@ def weapons(update: Update, context: CallbackContext) -> int:
 
     return WEAPONS
     
-    
-
 
 def roll(update: Update, context: CallbackContext) -> int:
     """Sends the results of 6 rolls of 4 dice and sends the 6 results and the abilities to buy scores. Also assign the first result."""
@@ -1635,7 +1634,7 @@ def buy(update: Update, context: CallbackContext) -> int:
     update.message.reply_text(
         'In which category is the item that you want to buy?',
         reply_markup = ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the category.'
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the category.'
         )
     )
 
@@ -1651,16 +1650,45 @@ def category_buy(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
 
     global item_category
-    item_category = update.message.text
+    try:
+        item_category = update.message.text
+
+        if item_category not in market.equipment.keys():
+            raise Exception()
+    except Exception as error:
+        reply_keyboard = []
+        for category in market.equipment.keys():
+            reply_keyboard.append([category])
+
+        update.message.reply_text(
+            f'No category named {update.message.text}.\n'
+            'Tap in the category.',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the category.'
+            )
+        )
+
+        return CATEGORY_BUY
 
     reply_keyboard = []
-    for item in market.equipment[update.message.text].keys():
-        reply_keyboard.append([item])
+    for item in market.equipment[item_category].keys():
+        if item_category == 'Weapons, Melee - average quality' or item_category == 'Weapons, Ranged - average quality':
+            for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+                for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                    for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                        if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                            if item in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                                if item not in players[user.name]['Weapon'].keys():
+                                    if [item] not in reply_keyboard:
+                                        reply_keyboard.append([item])
+        else:
+            if [item] not in reply_keyboard:
+                reply_keyboard.append([item])
 
     update.message.reply_text(
         'Choose the item to buy?',
         reply_markup = ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Choose the item.'
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the item.'
         )
     )
 
@@ -1676,29 +1704,113 @@ def check_coins(update: Update, context: CallbackContext) -> int:
     user = update.message.from_user
 
     global item_bought
-    item_bought = update.message.text
+    try:
+        item_bought = update.message.text
 
-    if more_money(user.name, market.equipment[item_category][item_bought]['value'], market.equipment[item_category][item_bought]['coin']):
-        reply_keyboard = [
-            ['Yes'],
-            ['No']
-        ]
+        if item_bought not in market.equipment[item_category].keys():
+            raise Exception()
+    except Exception as error:
+        reply_keyboard = []
+        for item in market.equipment[item_category].keys():
+            if item_category == 'Weapons, Melee - average quality' or item_category == 'Weapons, Ranged - average quality':
+                for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+                    for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                        for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                            if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                                if item in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                                    if item not in players[user.name]['Weapon'].keys():
+                                        if [item] not in reply_keyboard:  
+                                            reply_keyboard.append([item])
+            else:
+                if [item] not in reply_keyboard:
+                    reply_keyboard.append([item])
 
         update.message.reply_text(
-            'You have enough money, do you want to buy it?',
+            f'No item named {update.message.text}.\n'
+            'Tap in the item.',
             reply_markup = ReplyKeyboardMarkup(
-                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Yes or No.'
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the item.'
             )
         )
 
-        return UPDATE_INVENTORY
-    else:
-        update.message.reply_text(
-            'You have not enough money.',
-            reply_markup = ReplyKeyboardRemove()
-        )
+        return CHECK_COINS
+    
+    if item_category == 'Weapons, Melee - average quality' or item_category == 'Weapons, Ranged - average quality':
+        for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+            for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                    if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                        if update.message.text in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                            if update.message.text not in players[user.name]['Weapon'].keys():
+                                if more_money(user.name, market.equipment[item_category][item_bought]['value'], market.equipment[item_category][item_bought]['coin']):
+                                    reply_keyboard = [
+                                        ['Yes'],
+                                        ['No']
+                                    ]
 
-        return ConversationHandler.END
+                                    update.message.reply_text(
+                                        'You have enough money, do you want to buy it?',
+                                        reply_markup = ReplyKeyboardMarkup(
+                                            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Yes or No.'
+                                        )
+                                    )
+
+                                    return UPDATE_INVENTORY
+                                else:
+                                    update.message.reply_text(
+                                        'You have not enough money.',
+                                        reply_markup = ReplyKeyboardRemove()
+                                    )
+
+                                    return ConversationHandler.END
+
+    if item_category != 'Weapons, Melee - average quality' and item_category != 'Weapons, Ranged - average quality':
+        if more_money(user.name, market.equipment[item_category][item_bought]['value'], market.equipment[item_category][item_bought]['coin']):
+            reply_keyboard = [
+                ['Yes'],
+                ['No']
+            ]
+
+            update.message.reply_text(
+                'You have enough money, do you want to buy it?',
+                reply_markup = ReplyKeyboardMarkup(
+                    reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Yes or No.'
+                )
+            )
+
+            return UPDATE_INVENTORY
+        else:
+            update.message.reply_text(
+                'You have not enough money.',
+                reply_markup = ReplyKeyboardRemove()
+            )
+
+            return ConversationHandler.END
+
+    reply_keyboard = []
+    for item in market.equipment[item_category].keys():
+        if item_category == 'Weapons, Melee - average quality' or item_category == 'Weapons, Ranged - average quality':
+            for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+                for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                    for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                        if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                            if item in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                                if item not in players[user.name]['Weapon'].keys():
+                                    if [item] not in reply_keyboard:
+                                        reply_keyboard.append([item])
+        else:
+            if [item] not in reply_keyboard:
+                reply_keyboard.append([item])
+
+    update.message.reply_text(
+        f"Your class can't use {update.message.text}.\n"
+        'Tap in the item to buy.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the item.'
+        )
+    )
+
+    return CHECK_COINS
 
 
 def update_inventory(update: Update, context: CallbackContext) -> int:
@@ -1709,18 +1821,50 @@ def update_inventory(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
-    if update.message.text == 'No':
+    if update.message.text == 'Drop it':
+        update.message.reply_text(
+            'Weapon dropped.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+    elif update.message.text == 'No':
         update.message.reply_text(
             'Okay.',
             reply_markup = ReplyKeyboardRemove()
         )
 
         return ConversationHandler.END
-    else:
+    elif update.message.text == 'Yes' or item_category == 'Gun checked':
+        if item_category == 'Weapons, Melee - average quality' or item_category == 'Weapons, Ranged - average quality':
+            reply_keyboard = [
+                ['Use it'],
+                ["Don't use it"]
+            ]
+
+            update.message.reply_text(
+                'Do you want to use the new weapon?',
+                reply_markup = ReplyKeyboardMarkup(
+                    reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = "Use it or Don't use it."
+                )
+            )
+
+            return USE_NEW_WEAPON
+
         for slot in players[user.name]['Inventory']:
             if update.message.text == players[user.name]['Inventory'][slot]:
                 players[user.name]['Inventory'][slot] = 'empty'
                 break
+    else:
+        update.message.reply_text(
+            'Error! Send again the command /buy.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        item_category = ''
+        item_bought = ''
+
+        return ConversationHandler.END
 
     free_slot = -1
     for slot in players[user.name]['Inventory']:
@@ -1752,15 +1896,74 @@ def update_inventory(update: Update, context: CallbackContext) -> int:
 
     players[user.name]['Inventory'][free_slot] = item_bought
 
-    item_category = ''
-    item_bought = ''
+    if update.message.text == 'Keep it':
+        update.message.reply_text(
+            f'The {item_bought} now is in the inventory.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
 
     update.message.reply_text(
         'Item bought, now it is in your inventory.',
         reply_markup = ReplyKeyboardRemove()
     )
 
+    item_category = ''
+    item_bought = ''
+
     return ConversationHandler.END
+
+
+def use_new_weapon(update: Update, context: CallbackContext) -> int:
+    """Checks if the new weapon will go in the inventory or the PC is going to use it."""
+
+    user = update.message.from_user
+
+    global item_category, item_bought
+
+    item_category = 'Gun checked'
+
+    if update.message.text == 'Use it':
+        temp_item = item_bought
+        item_bought = str(players[user.name]["Weapon"].keys())
+        item_bought = item_bought.replace("dict_keys(['", '')
+        item_bought = item_bought.replace("'])", '')
+
+        for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+            for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                    if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                        for weapon_var in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                            if weapon_var == temp_item:
+                                update_players_dict(user.name, 'Weapon', {temp_item: classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type][weapon_var]})
+
+        reply_keyboard = [
+            ['Drop it'],
+            ['Keep it']
+        ]
+
+        update.message.reply_text(
+            f'Do you want to drop or keep the {item_bought}?',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Drop it or Keep it.'
+            )
+        )
+
+        return UPDATE_INVENTORY
+
+    reply_keyboard = [
+        ['Next']
+    ]
+
+    update.message.reply_text(
+        f'Tap in Next to put {item_bought} in the inventory.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Next.'
+        )
+    )
+
+    return UPDATE_INVENTORY
 
 # end /buy
 
@@ -2646,7 +2849,8 @@ def main() -> None:
         states = {
             CATEGORY_BUY: [MessageHandler(Filters.regex(accettable_elements(market.equipment)) & (~ Filters.command), category_buy)],
             CHECK_COINS: [MessageHandler(Filters.text & (~ Filters.command), check_coins)],
-            UPDATE_INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), update_inventory)]
+            UPDATE_INVENTORY: [MessageHandler(Filters.text & (~ Filters.command), update_inventory)],
+            USE_NEW_WEAPON: [MessageHandler(Filters.regex("^(Use it|Don't use it)$") & (~ Filters.command), use_new_weapon)]
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )

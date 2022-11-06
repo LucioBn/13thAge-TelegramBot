@@ -586,5 +586,4 @@ equipment = {
             "coin": "gp"
         }
     }
-    
 }

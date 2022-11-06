@@ -1048,6 +1048,7 @@ classes = {
         },
         'Backgrounds': ['Street Thug', 'Cat Burglar', 'Diplomat', 'Professional Gambler', 'Courtier', 'Jewel Thief', 'Acrobat', 'Con Artist', 'Bartender', 'Spy Master', 'Pirate', 'Dandy', 'Rat Catcher']
     },
+    
     'Sorcerer': {
         'ability score': ['Cha', 'Con'],
         'HP': 6,
