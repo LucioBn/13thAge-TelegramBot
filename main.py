@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 
 GM = 0
 PC, INVENTORY, PP, GP, SP, CP = range(6)
-NAME, RACE, CLASS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, ICON_RELATIONSHIP, RELATIONSHIP_VALUE, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(13)
+NAME, RACE, CLASS, WEAPONS, ROLL, ABILITY_SCORES, ABILITY_SCORES_FROM_RACE, ABILITY_SCORES_FROM_CLASS, UNIQUE_THING, ICON, ICON_RELATIONSHIP, RELATIONSHIP_VALUE, BACKGROUND, ASSIGN_BACKGROUND_POINTS = range(14)
 COMBAT_STATS = 0
 SHOW_ABILITIES = 0
 SHOW_UNIQUE_THING = 0
@@ -55,6 +55,7 @@ PC_TO_TEST, ABILITY_TO_TEST, DC_USED_TO_TEST = range(3)
 PC_BACKGROUND_TO_TEST = 0
 PC_TO_CHANGE_LEVEL_TO, UPGRADE_OR_DOWNGRADE = range(2)
 SHOW_LEVEL_GM = 0
+SHOW_WEAPON = 0
 
 # start of /start
 
@@ -576,26 +577,76 @@ def race(update: Update, context: CallbackContext) -> int:
 
 
 def class_(update: Update, context: CallbackContext) -> int:
-    """Stores the class and """
-
-    reply_keyboard = [
-        ['Roll']
-    ]
+    """Stores the class and asks the starting weapon of the PC."""
 
     user = update.message.from_user
+
     update_players_dict(user.name, 'Class', update.message.text)
-    update_players_dict(user.name, 'Class level', 1)
+     
+    reply_keyboard = []
+    for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+        for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+            for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                    for weapon in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                            reply_keyboard.append([weapon])
 
     update.message.reply_text(
-        'To accumulate the points to buy the scores of each ability, '
-        'roll 4d6 for 6 times, then the low die in each roll will be dropped and '
-        'finally you will obtain your points.',
+        'Tap in the starting weapon.',
         reply_markup = ReplyKeyboardMarkup(
-            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Roll 4d6 6 times.'
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the weapon.'
         )
     )
 
-    return ROLL
+    return WEAPONS
+
+
+def weapons(update: Update, context: CallbackContext) -> int:
+    """Stores the starting weapon for the PC and asks to roll 6 dice."""
+
+    user = update.message.from_user
+
+    for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+        for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+            for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                    if update.message.text in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                        update_players_dict(user.name, 'Weapon', {update.message.text: classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type][update.message.text]})
+
+                        reply_keyboard = [
+                            ['Roll']
+                        ]
+
+                        update.message.reply_text(
+                            'To accumulate the points to buy the scores of each ability, '
+                            'roll 4d6 for 6 times, then the low die in each roll will be dropped and '
+                            'finally you will obtain your points.',
+                            reply_markup = ReplyKeyboardMarkup(
+                                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Roll 4d6 6 times.'
+                            )
+                        )
+
+                        return ROLL
+    
+    reply_keyboard = []
+    for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+        for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+            for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                    for weapon in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                            reply_keyboard.append([weapon])
+
+    update.message.reply_text(
+        "Your class doesn't allow you to use this weapon.\n"
+        'Tap in the starting weapon.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the weapon.'
+        )
+    )
+
+    return WEAPONS
+    
+    
 
 
 def roll(update: Update, context: CallbackContext) -> int:
@@ -1095,6 +1146,8 @@ def who(update: Update, context: CallbackContext) -> int:
             return "to change PC's level"
         if command == '/level_gm':
             return "to know PC's level"
+        if command == '/weapon_gm':
+            return "to know PC's weapon"
 
     update.message.reply_text(
         f'Tap in a PC\'s name or write a player name {request(command)}.',
@@ -1121,6 +1174,8 @@ def who(update: Update, context: CallbackContext) -> int:
         return PC_TO_CHANGE_LEVEL_TO
     if command == '/level_gm':
         return SHOW_LEVEL_GM
+    if command == '/weapon_gm':
+        return SHOW_WEAPON
 
 
 # /combat_stats
@@ -2058,6 +2113,31 @@ def show_level(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+def show_weapon(update: Update, context: CallbackContext) -> int:
+    """Show the player level."""
+
+    user = update.message.from_user
+
+    if is_the_gm(user.name):
+        nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
+    else:
+        nickname = user.name
+
+    weapon = str(players[nickname]["Weapon"].keys())
+    weapon = weapon.replace("dict_keys(['", '')
+    weapon = weapon.replace("'])", '')
+
+    update.message.reply_text(
+        players[nickname]["PC's name"] + "'s weapon is " + weapon + '.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
+
 # /cancel
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -2293,7 +2373,7 @@ def who_nickname(name, update):
 
     command = update.message.text
 
-    if command == '/combat_stats' or command == '/abilities' or command == '/unique_thing' or command == '/icons_relationships' or command == '/backgrounds' or command == '/coins' or command == '/inventory' or command == '/level':
+    if command == '/combat_stats' or command == '/abilities' or command == '/unique_thing' or command == '/icons_relationships' or command == '/backgrounds' or command == '/coins' or command == '/inventory' or command == '/level' or command ==  '/weapon':
         update.message.reply_text(
             'Only the players can use this command.',
             reply_markup = ReplyKeyboardRemove()
@@ -2353,7 +2433,7 @@ def update_hp_in_persons(username):
     """Update hp in persons.json for that specific user."""
 
     # write_players_dict()
-    update_players_dict(username, 'HP', (classes.classes[players[username]['Class']]['HP'] + players[username][short_to_long_for_abilities('Con')]) * 3)
+    update_players_dict(username, 'HP', (classes.classes[players[username]['Class']]['HP'] + players[username][short_to_long_for_abilities('Con')]) * 3 + players[username]['Level'])
     write_players_json()
 
 
@@ -2368,9 +2448,9 @@ def update_ac_in_persons(username):
             players[username]['AC'] = {}
 
         if key == 'Heavy':
-            players[username]['AC']['Heavy'] = classes.classes[players[username]['Class']]['AC']['Heavy']['value'] + modifier + get_class_level(username)
+            players[username]['AC']['Heavy'] = classes.classes[players[username]['Class']]['AC']['Heavy']['value'] + modifier + get_class_level(username)  + players[username]['Level']
         else:
-            players[username]['AC'][key] = classes.classes[players[username]['Class']]['AC'][key] + modifier + get_class_level(username)
+            players[username]['AC'][key] = classes.classes[players[username]['Class']]['AC'][key] + modifier + get_class_level(username)  + players[username]['Level']
         
         write_players_json()
     
@@ -2385,7 +2465,7 @@ def update_pd_in_persons(username):
     # write_players_dict()
 
     modifier = get_mid_value([players[username][short_to_long_for_abilities('Str')], players[username][short_to_long_for_abilities('Con')], players[username][short_to_long_for_abilities('Dex')]])
-    update_players_dict(username, 'PD', classes.classes[players[username]['Class']]['PD'] + modifier + get_class_level(username))
+    update_players_dict(username, 'PD', classes.classes[players[username]['Class']]['PD'] + modifier + get_class_level(username)  + players[username]['Level'])
 
     write_players_json()
 
@@ -2396,7 +2476,7 @@ def update_md_in_persons(username):
     # write_players_dict()
 
     modifier = get_mid_value([players[username][short_to_long_for_abilities('Int')], players[username][short_to_long_for_abilities('Wis')], players[username][short_to_long_for_abilities('Cha')]])
-    update_players_dict(username, 'MD', classes.classes[players[username]['Class']]['MD'] + modifier + get_class_level(username))
+    update_players_dict(username, 'MD', classes.classes[players[username]['Class']]['MD'] + modifier + get_class_level(username)  + players[username]['Level'])
 
     write_players_json()
 
@@ -2406,7 +2486,7 @@ def update_initiative_bonus(username):
 
     # write_players_dict()
 
-    update_players_dict(username, 'IB', roll_d_n_faces(20) + players[username][short_to_long_for_abilities('Dex')] + get_class_level(username))
+    update_players_dict(username, 'IB', roll_d_n_faces(20) + players[username][short_to_long_for_abilities('Dex')] + get_class_level(username) + players[username]['Level'])
 
     write_players_json()
 
@@ -2474,6 +2554,7 @@ def main() -> None:
             NAME: [MessageHandler(Filters.text & (~ Filters.command), name)],
             RACE: [MessageHandler(Filters.regex(accettable_elements(races.races)) & (~ Filters.command), race)],
             CLASS: [MessageHandler(Filters.regex(accettable_elements(classes.classes)) & (~ Filters.command), class_)],
+            WEAPONS: [MessageHandler(Filters.text & (~ Filters.command), weapons)],
             ROLL: [MessageHandler(Filters.regex('^(Roll)$') & (~ Filters.command), roll)],
             ABILITY_SCORES: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)) & (~ Filters.command), ability_scores)],
             ABILITY_SCORES_FROM_RACE: [MessageHandler(Filters.regex(accettable_elements(abilities.abilities)) & (~ Filters.command), ability_scores_from_race)],
@@ -2605,6 +2686,14 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    show_weapon_gm_handler = ConversationHandler(
+        entry_points = [CommandHandler('weapon_gm', who)],
+        states = {
+            SHOW_WEAPON: [MessageHandler(Filters.text & (~ Filters.command), show_weapon)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
@@ -2632,6 +2721,8 @@ def main() -> None:
     dispatcher.add_handler(change_level_handler)
     dispatcher.add_handler(CommandHandler("level", show_level))
     dispatcher.add_handler(show_level_gm_handler)
+    dispatcher.add_handler(CommandHandler("weapon", show_weapon))
+    dispatcher.add_handler(show_weapon_gm_handler)
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
 
