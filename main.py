@@ -59,6 +59,7 @@ SHOW_WEAPON = 0
 SHOW_BASIC_ATTACK_STATS = 0
 ITEM_DROPPED = 0
 WEAPON_IN_HAND = 0
+DIE_FACES, DICE_TO_ROLL = range(2)
 
 # start of /start
 
@@ -2524,7 +2525,7 @@ def weapon_in_hand(update: Update, context: CallbackContext) -> int:
 # end /weapon_from_inventory
 
 
-# start /basic_attack_stats
+# /basic_attack_stats
 
 def show_basic_attack_stats(update: Update, context: CallbackContext) -> int:
     """Asks must be with or without weapon."""
@@ -2560,6 +2561,89 @@ def show_basic_attack_stats(update: Update, context: CallbackContext) -> int:
         message(),
         reply_markup = ReplyKeyboardRemove()
     )
+
+    return ConversationHandler.END
+
+
+# start /roll_die
+
+def dice_roller(update: Update, context: CallbackContext) -> int:
+    """Asks how many faces the die has."""
+
+    user = update.message.from_user
+
+    update.message.reply_text(
+        'How many faces the die has?',
+        reply_markup = ReplyKeyboardRemove()
+    )    
+
+    return DIE_FACES
+
+
+die_faces_var = 0
+
+
+def die_faces(update: Update, context: CallbackContext) -> int:
+    """Stores the die faces and asks how many dice to roll."""
+
+    user = update.message.from_user
+
+    global die_faces_var
+    try:
+        die_faces_var = int(update.message.text)
+
+        if die_faces_var <= 1:
+            raise Exception()
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be more than 1.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return DIE_FACES
+
+    update.message.reply_text(
+        'How many dice to roll?',
+        reply_markup = ReplyKeyboardRemove()
+    )    
+
+    return DICE_TO_ROLL
+
+
+def dice_to_roll(update: Update, context: CallbackContext) -> int:
+    """Rolls the dice."""
+
+    user = update.message.from_user
+
+    if int(update.message.text) < 1:
+        update.message.reply_text(
+            'Need to be more than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return DICE_TO_ROLL
+
+    if int(update.message.text) == 1:
+        update.message.reply_text(
+            'Result of the roll -> ' + str(roll_d_n_faces(die_faces_var)),
+            reply_markup = ReplyKeyboardRemove()
+        )    
+
+        return ConversationHandler.END
+
+    update.message.reply_text(
+        'Results of the ' + update.message.text + ' rolls:',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    count = 1
+    while count <= int(update.message.text):
+        update.message.reply_text(
+            'Roll ' + str(count) + ' -> ' + str(roll_d_n_faces(die_faces_var)),
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        count += 1
 
     return ConversationHandler.END
 
@@ -3228,6 +3312,15 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    dice_roller_handler = ConversationHandler(
+        entry_points = [CommandHandler('dice_roller', dice_roller)],
+        states = {
+            DIE_FACES: [MessageHandler(Filters.text & (~ Filters.command), die_faces)],
+            DICE_TO_ROLL: [MessageHandler(Filters.text & (~ Filters.command), dice_to_roll)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
@@ -3261,6 +3354,7 @@ def main() -> None:
     dispatcher.add_handler(show_basic_attack_stats_gm_handler)
     dispatcher.add_handler(drop_from_inventory_handler)
     dispatcher.add_handler(weapon_from_inventory_handler)
+    dispatcher.add_handler(dice_roller_handler)
     dispatcher.add_handler(CommandHandler("auto_set_game", auto_set_game))
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
