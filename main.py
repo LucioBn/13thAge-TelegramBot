@@ -56,6 +56,8 @@ PC_BACKGROUND_TO_TEST = 0
 PC_TO_CHANGE_LEVEL_TO, UPGRADE_OR_DOWNGRADE = range(2)
 SHOW_LEVEL_GM = 0
 SHOW_WEAPON = 0
+ITEM_DROPPED = 0
+WEAPON_IN_HAND = 0
 
 # start of /start
 
@@ -1836,6 +1838,9 @@ def update_inventory(update: Update, context: CallbackContext) -> int:
 
         return ConversationHandler.END
     elif update.message.text == 'Yes' or item_category == 'Gun checked':
+        if update.message.text == 'Yes':
+            take_PC_money(user.name, market.equipment[item_category][item_bought]['value'], market.equipment[item_category][item_bought]['coin'])
+
         if item_category == 'Weapons, Melee - average quality' or item_category == 'Weapons, Ranged - average quality':
             reply_keyboard = [
                 ['Use it'],
@@ -2341,6 +2346,179 @@ def show_weapon(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
+# start /drop_from_inventory
+
+def drop_from_inventory(update: Update, context: CallbackContext) -> int:
+    """Allow the PC to drop an item from the inventory."""
+
+    user = update.message.from_user
+
+    if is_the_gm(user.name):
+        update.message.reply_text(
+            'Only the PCs can use this command.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for slot in players[user.name]['Inventory'].keys():
+        if players[user.name]['Inventory'][slot] != 'empty':
+            reply_keyboard.append([players[user.name]['Inventory'][slot]])
+
+    if len(reply_keyboard) == 0:
+        update.message.reply_text(
+            'No items in the inventory.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    update.message.reply_text(
+        'Tap in the item to drop.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap the item.'
+        )
+    )
+
+    return ITEM_DROPPED
+
+
+def item_dropped(update: Update, context: CallbackContext) -> int:
+    """Update the inventory with the item dropped."""
+
+    user = update.message.from_user
+
+    if update.message.text != 'empty':
+        for slot in players[user.name]['Inventory'].keys():
+            if update.message.text in players[user.name]['Inventory'][slot]:
+                players[user.name]['Inventory'][slot] = 'empty'
+
+                update.message.reply_text(
+                    f'{update.message.text} dropped.',
+                    reply_markup = ReplyKeyboardRemove()
+                )
+
+                return ConversationHandler.END
+
+    reply_keyboard = []
+    for slot in players[user.name]['Inventory'].keys():
+        if players[user.name]['Inventory'][slot] != 'empty':
+            reply_keyboard.append([players[user.name]['Inventory'][slot]])
+
+    update.message.reply_text(
+        f'No item named {update.message.text} in the inventory.\n'
+        'Tap in the item to drop.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap the item.'
+        )
+    )
+
+    return ITEM_DROPPED
+
+# end /drop_from_inventory
+
+
+# start /weapon_from_inventory
+
+def weapon_from_inventory(update: Update, context: CallbackContext) -> int:
+    """Asks which weapon take from the inventory."""
+
+    user = update.message.from_user
+
+    if is_the_gm(user.name):
+        update.message.reply_text(
+            'Only the PCs can use this command.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for slot in players[user.name]['Inventory'].keys():
+        for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+            for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                    if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                        if players[user.name]['Inventory'][slot] in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                            reply_keyboard.append([players[user.name]['Inventory'][slot]])
+
+    if len(reply_keyboard) == 0:
+        update.message.reply_text(
+            'No weapons in the inventory.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    update.message.reply_text(
+        'Tap in the weapon that you want to use.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap the weapon.'
+        )
+    )
+
+    return WEAPON_IN_HAND
+
+
+def weapon_in_hand(update: Update, context: CallbackContext) -> int:
+    """Put the chosen weapon in the hands and the one in the hands in the inventory."""
+
+    user = update.message.from_user
+
+    for slot in players[user.name]['Inventory'].keys():
+        for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+            for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                    if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                        if players[user.name]['Inventory'][slot] in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                            for slot in players[user.name]['Inventory'].keys():
+                                if update.message.text == players[user.name]['Inventory'][slot]:
+                                    players[user.name]['Inventory'][slot] = str(players[user.name]['Weapon'].keys())
+                                    players[user.name]['Inventory'][slot] = players[user.name]['Inventory'][slot].replace("dict_keys(['", '')
+                                    players[user.name]['Inventory'][slot] = players[user.name]['Inventory'][slot].replace("'])", '')
+                                    update.message.reply_text(
+                                        f"The {players[user.name]['Inventory'][slot]} is now in your inventory.",
+                                        reply_markup = ReplyKeyboardRemove()
+                                    )
+
+                            for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+                                for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                                    for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                                        if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                                            for weapon_var in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                                                if weapon_var == update.message.text:
+                                                    update_players_dict(user.name, 'Weapon', {update.message.text: classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type][weapon_var]})
+
+                            update.message.reply_text(
+                                f'The {update.message.text} is now in your hands.',
+                                reply_markup = ReplyKeyboardRemove()
+                            )
+
+                            return ConversationHandler.END
+    
+    reply_keyboard = []
+    for slot in players[user.name]['Inventory'].keys():
+        for category in classes.classes[players[user.name]['Class']]['Weapons'].keys():
+            for dimension in classes.classes[players[user.name]['Class']]['Weapons'][category].keys():
+                for type in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension].keys():
+                    if classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type] != None:
+                        if players[user.name]['Inventory'][slot] in classes.classes[players[user.name]['Class']]['Weapons'][category][dimension][type].keys():
+                            reply_keyboard.append([players[user.name]['Inventory'][slot]])
+
+    update.message.reply_text(
+        f'No weapon named {update.message.text} in your inventory.\n'
+        'Tap in the weapon that you want to use.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap the weapon.'
+        )
+    )
+
+    return WEAPON_IN_HAND
+
+# end /weapon_from_inventory
+
+
 # /cancel
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -2376,6 +2554,14 @@ def auto_set_pc(update: Update, context: CallbackContext) -> int:
 
     user = update.message.from_user
 
+    if is_the_gm(user.name):
+        update.effective_message.reply_text(
+            "Only the PCs can use this command.",
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
     global num_of_players
     num_of_players += 1
 
@@ -2400,26 +2586,69 @@ def auto_set_pc(update: Update, context: CallbackContext) -> int:
 
     players[user.name]["PC's name"] = "Po"
     players[user.name]["Race"] = "Human"
-    players[user.name]["Class"] = "Cleric"
-    players[user.name]["Class level"] = 1
+    players[user.name]["Class"] = "Fighter"
+
+    players[user.name]["Basic Attacks"] = classes.classes["Fighter"]['Basic Attacks']
+
+    players[user.name]["Weapon"] = {}
+    players[user.name]["Weapon"]["Longsword"] = {}
+    players[user.name]["Weapon"]["Longsword"]["times"] = 1
+    players[user.name]["Weapon"]["Longsword"]["faces"] = 8
+    players[user.name]["Weapon"]["Longsword"]["atk"] = 0
+
     players[user.name]["Strenght"] = 17
     players[user.name]["Intelligence"] = 13
     players[user.name]["Wisdom"] = 9
     players[user.name]["Charisma"] = 7
     players[user.name]["Dexterity"] = 16
     players[user.name]["Constitution"] = 10
-    players[user.name]["Unique"] = "my unique thing"
+
+    players[user.name]["Unique"] = "Super jump"
+
     players[user.name]["Relations with the icons"] = {}
     players[user.name]["Relations with the icons"]["Archmage"] = {}
     players[user.name]["Relations with the icons"]["Archmage"]["Type"] = "Positive"
-    players[user.name]["Relations with the icons"]["Archmage"]["Value"] = 3
+    players[user.name]["Relations with the icons"]["Archmage"]["Value"] = 1
+    players[user.name]["Relations with the icons"]["Emperor"] = {}
+    players[user.name]["Relations with the icons"]["Emperor"]["Type"] = "Conflicted"
+    players[user.name]["Relations with the icons"]["Emperor"]["Value"] = 1
+    players[user.name]["Relations with the icons"]["Dwarf King"] = {}
+    players[user.name]["Relations with the icons"]["Dwarf King"]["Type"] = "Negative"
+    players[user.name]["Relations with the icons"]["Dwarf King"]["Value"] = 1
+
     players[user.name]["Backgrounds"] = {}
-    players[user.name]["Backgrounds"]["Healer"] = 8
+    players[user.name]["Backgrounds"]["Healer"] = 4
+    players[user.name]["Backgrounds"]["Mercenary Captain"] = 3
+    players[user.name]["Backgrounds"]["Shieldwall Spearman"] = 1
 
     write_players_json()
 
     return ConversationHandler.END
 
+
+def auto_set_game(update: Update, context: CallbackContext) -> int:
+    """Sets automatically the game."""
+
+    user = update.message.from_user
+
+    if not is_the_gm(user.name):
+        update.effective_message.reply_text(
+            "Only the GM can use this command.",
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    global max_num_of_players, inventory_size, beginning_pp, beginning_gp, beginning_sp, beginning_cp
+
+    max_num_of_players = 5
+    inventory_size = 5
+    beginning_pp = 0
+    beginning_gp = 0
+    beginning_sp = 1
+    beginning_cp = 0
+
+    return ConversationHandler.END
 
 # Usefull
 
@@ -2609,6 +2838,17 @@ def more_money(username: str, value: int, currency: str) -> bool:
         return True
     
     return False
+
+
+def take_PC_money(username: str, value: int, currency: str) -> None:
+    """Return true if the player has more money than the passed."""
+
+    players[username]["Coins"]["cp"] = convert_player_coins_in_cp(username) - convert_in_cp(value, currency)    
+    players[username]["Coins"]["pp"] = 0
+    players[username]["Coins"]["gp"] = 0
+    players[username]["Coins"]["sp"] = 0
+
+    balance_currencies(username)
 
 
 def convert_player_coins_in_cp(username: str) -> int:
@@ -2898,6 +3138,22 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    drop_from_inventory_handler = ConversationHandler(
+        entry_points = [CommandHandler('drop_from_inventory', drop_from_inventory)],
+        states = {
+            ITEM_DROPPED: [MessageHandler(Filters.text & (~ Filters.command), item_dropped)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+    
+    weapon_from_inventory_handler = ConversationHandler(
+        entry_points = [CommandHandler('weapon_from_inventory', weapon_from_inventory)],
+        states = {
+            WEAPON_IN_HAND: [MessageHandler(Filters.text & (~ Filters.command), weapon_in_hand)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
@@ -2927,6 +3183,9 @@ def main() -> None:
     dispatcher.add_handler(show_level_gm_handler)
     dispatcher.add_handler(CommandHandler("weapon", show_weapon))
     dispatcher.add_handler(show_weapon_gm_handler)
+    dispatcher.add_handler(drop_from_inventory_handler)
+    dispatcher.add_handler(weapon_from_inventory_handler)
+    dispatcher.add_handler(CommandHandler("auto_set_game", auto_set_game))
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
 
