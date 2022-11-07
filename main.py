@@ -56,6 +56,7 @@ PC_BACKGROUND_TO_TEST = 0
 PC_TO_CHANGE_LEVEL_TO, UPGRADE_OR_DOWNGRADE = range(2)
 SHOW_LEVEL_GM = 0
 SHOW_WEAPON = 0
+SHOW_BASIC_ATTACK_STATS = 0
 ITEM_DROPPED = 0
 WEAPON_IN_HAND = 0
 
@@ -1149,6 +1150,8 @@ def who(update: Update, context: CallbackContext) -> int:
             return "to know PC's level"
         if command == '/weapon_gm':
             return "to know PC's weapon"
+        if command == '/basic_attack_stats_gm':
+            return "to know PC's basic attack stats"
 
     update.message.reply_text(
         f'Tap in a PC\'s name or write a player name {request(command)}.',
@@ -1177,6 +1180,8 @@ def who(update: Update, context: CallbackContext) -> int:
         return SHOW_LEVEL_GM
     if command == '/weapon_gm':
         return SHOW_WEAPON
+    if command == '/basic_attack_stats_gm':
+        return SHOW_BASIC_ATTACK_STATS
 
 
 # /combat_stats
@@ -2519,6 +2524,46 @@ def weapon_in_hand(update: Update, context: CallbackContext) -> int:
 # end /weapon_from_inventory
 
 
+# start /basic_attack_stats
+
+def show_basic_attack_stats(update: Update, context: CallbackContext) -> int:
+    """Asks must be with or without weapon."""
+
+    user = update.message.from_user
+
+    if is_the_gm(user.name):
+        nickname = who_nickname(update.message.text, update)
+
+        if nickname == -1:
+            return ConversationHandler.END
+    else:
+        nickname = user.name
+
+    def message() -> str:
+        s = ''
+        s += players[nickname]["PC's name"] + ' basic attack stats:\n'
+        for attack_type in players[nickname]['Basic Attacks'].keys():
+            s += attack_type + ':\n'
+            for key in players[nickname]['Basic Attacks'][attack_type].keys():
+                if key == 'Target':
+                    s += '- target -> ' + players[nickname]['Basic Attacks'][attack_type][key] + '.\n'
+                if key == 'Attack':
+                    s += '- attack -> ' + str(max_list(nickname, players[nickname]['Basic Attacks'][attack_type][key]) + players[nickname]['Level']) + ' (vs. AC).\n'
+                if key == 'Hit':
+                    s += '- hit -> ' + str(max_list(nickname, players[nickname]['Basic Attacks'][attack_type][key]) + weapon_damage(players[nickname]['Weapon'][next(iter(players[nickname]['Weapon']))])) + '.\n'
+                if key == 'Miss':
+                    s += '- miss -> ' + str(players[nickname]['Basic Attacks'][attack_type][key] * players[nickname]['Level']) + '.\n'
+
+        return s
+
+    update.message.reply_text(
+        message(),
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
+
 # /cancel
 
 def cancel(update: Update, context: CallbackContext) -> int:
@@ -2547,7 +2592,7 @@ def reset(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
-# usefull for testing
+# useful for testing
 
 def auto_set_pc(update: Update, context: CallbackContext) -> int:
     """Sets automatically the pc."""
@@ -2650,7 +2695,8 @@ def auto_set_game(update: Update, context: CallbackContext) -> int:
 
     return ConversationHandler.END
 
-# Usefull
+
+# useful
 
 def is_the_gm(username: str) -> bool:
     """Return true if the user is the gm and sends a message, saying them that they can't play that action."""
@@ -2805,7 +2851,7 @@ def who_nickname(name, update):
 
     command = update.message.text
 
-    if command == '/combat_stats' or command == '/abilities' or command == '/unique_thing' or command == '/icons_relationships' or command == '/backgrounds' or command == '/coins' or command == '/inventory' or command == '/level' or command ==  '/weapon':
+    if command == '/combat_stats' or command == '/abilities' or command == '/unique_thing' or command == '/icons_relationships' or command == '/backgrounds' or command == '/coins' or command == '/inventory' or command == '/level' or command ==  '/weapon' or command == '/basic_attack_stats':
         update.message.reply_text(
             'Only the players can use this command.',
             reply_markup = ReplyKeyboardRemove()
@@ -2869,6 +2915,26 @@ def convert_in_cp(value: int, currency: str) -> int:
     if currency == 'pp':
         return value * 1000
     
+
+def max_list(username: str, lista: list) -> int:
+    """Returns the max value of the ability in the list."""
+
+    if len(lista) == 1:
+        return players[username][short_to_long_for_abilities(lista[0])]
+
+    max_value = 0
+    for ability in lista:
+        if max_value < players[username][short_to_long_for_abilities(ability)]:
+            max_value = players[username][short_to_long_for_abilities(ability)]
+
+    return max_value
+    
+
+def weapon_damage(weapon_dict: dict) -> int:
+    """Returns the weapon damage value."""
+
+    return weapon_dict["times"] + weapon_dict["faces"] + weapon_dict["atk"]
+
 
 # start of update combat stats
 
@@ -2952,7 +3018,7 @@ points_for_the_abilities = []
 abilities_to_be_assigned = {'': []}
 check = []
 first = True
-username = ''
+nickname = ''
 players = {}
 
 icon_relationship_points = {}
@@ -3139,6 +3205,14 @@ def main() -> None:
         fallbacks = [CommandHandler('cancel', cancel)]
     )
     
+    show_basic_attack_stats_gm_handler = ConversationHandler(
+        entry_points = [CommandHandler('basic_attack_stats_gm', who)],
+        states = {
+            SHOW_BASIC_ATTACK_STATS: [MessageHandler(Filters.text & (~ Filters.command), show_basic_attack_stats)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+    
     drop_from_inventory_handler = ConversationHandler(
         entry_points = [CommandHandler('drop_from_inventory', drop_from_inventory)],
         states = {
@@ -3183,6 +3257,8 @@ def main() -> None:
     dispatcher.add_handler(show_level_gm_handler)
     dispatcher.add_handler(CommandHandler("weapon", show_weapon))
     dispatcher.add_handler(show_weapon_gm_handler)
+    dispatcher.add_handler(CommandHandler("basic_attack_stats", show_basic_attack_stats))
+    dispatcher.add_handler(show_basic_attack_stats_gm_handler)
     dispatcher.add_handler(drop_from_inventory_handler)
     dispatcher.add_handler(weapon_from_inventory_handler)
     dispatcher.add_handler(CommandHandler("auto_set_game", auto_set_game))

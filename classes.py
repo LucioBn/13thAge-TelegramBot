@@ -161,14 +161,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Str'], 'AC'],
-                'Hit': ['Weapon', ['Str']],
+                'Attack': ['Str'],
+                'Hit': ['Str'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': 0
             }
         }
@@ -331,14 +331,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Str', 'Dex'], 'AC'],
-                'Hit': ['Weapon', ['Str', 'Dex']],
+                'Attack': ['Str', 'Dex'],
+                'Hit': ['Str', 'Dex'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': 0
             }
         }
@@ -501,14 +501,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Str'], 'AC'],
-                'Hit': ['Weapon', ['Str']],
+                'Attack': ['Str'],
+                'Hit': ['Str'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': 0
             }
         }
@@ -671,14 +671,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Str'], 'AC'],
-                'Hit': ['Weapon', ['Str']],
+                'Attack': ['Str'],
+                'Hit': ['Str'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': 0
             }
         }
@@ -841,14 +841,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Str'], 'AC'],
-                'Hit': ['Weapon', ['Str']],
+                'Attack': ['Str'],
+                'Hit': ['Str'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': 0
             }
         }
@@ -1011,14 +1011,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Str'], 'AC'],
-                'Hit': ['Weapon', ['Str']],
+                'Attack': ['Str'],
+                'Hit': ['Str'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': 0
             }
         }
@@ -1046,7 +1046,147 @@ classes = {
             'times': 1,
             'faces': 8
         },
-        'Backgrounds': ['Street Thug', 'Cat Burglar', 'Diplomat', 'Professional Gambler', 'Courtier', 'Jewel Thief', 'Acrobat', 'Con Artist', 'Bartender', 'Spy Master', 'Pirate', 'Dandy', 'Rat Catcher']
+        'Backgrounds': ['Street Thug', 'Cat Burglar', 'Diplomat', 'Professional Gambler', 'Courtier', 'Jewel Thief', 'Acrobat', 'Con Artist', 'Bartender', 'Spy Master', 'Pirate', 'Dandy', 'Rat Catcher'],
+        'Weapons': {
+            'Melee Weapons': {
+                'Small': {
+                    'One-Handed': {
+                        'Dagger': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': 0
+                        }
+                    },
+                    'Two-Handed': {
+                        'Club': {
+                            'times': 1,
+                            'faces': 6,
+                            'atk': 0
+                        }
+                    }
+                },
+                'Light or Simple': {
+                    'One-Handed': {
+                        'Shortsword': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': 0
+                        },
+                        'Wicked Knife': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': 0
+                        }
+                    },
+                    'Two-Handed': {
+                        'Spear': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': 0
+                        }
+                    },
+                },
+                'Heavy or Martial': {
+                    'One-Handed': {
+                        'Longsword': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': -2
+                        },
+                        'Scimitar': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': -2
+                        }
+                    },
+                    'Two-Handed': {
+                        'Greatsword': {
+                            'times': 1,
+                            'faces': 10,
+                            'atk': -2
+                        }
+                    }
+                }
+            },
+            'Ranged Weapons': {
+                'Small': {
+                    'Thrown': {
+                        'Dagger': {
+                            'times': 1,
+                            'faces': 4,
+                            'atk': 0
+                        }
+                    },
+                    'Crossbow': {
+                        'Hand Crossbow': {
+                            'times': 1,
+                            'faces': 4,
+                            'atk': 0
+                        }
+                    },
+                    'Bow': None
+                },
+                'Light or Simple': {
+                    'Thrown': {
+                        'Javelin': {
+                            'times': 1,
+                            'faces': 6,
+                            'atk': 0
+                        },
+                        'Axe': {
+                            'times': 1,
+                            'faces': 6,
+                            'atk': 0
+                        }
+                    },
+                    'Crossbow': {
+                        'Light Crossbow': {
+                            'times': 1,
+                            'faces': 6,
+                            'atk': 0
+                        }
+                    },
+                    'Bow': {
+                        'Shortbow': {
+                            'times': 1,
+                            'faces': 6,
+                            'atk': 0
+                        }
+                    }
+                },
+                'Heavy or Martial': {
+                    'Thrown': None,
+                    'Crossbow': {
+                        'Heavy Crossbow': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': -1
+                        }
+                    },
+                    'Bow': {
+                        'Longbow': {
+                            'times': 1,
+                            'faces': 8,
+                            'atk': -2
+                        }
+                    }
+                }
+            }
+        },
+        'Basic Attacks': {
+            'Melee attack': {
+                'Target': 'One enemy',
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
+                'Miss': -1
+            },
+            'Ranged attack': {
+                'Target': 'One enemy',
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
+                'Miss': -1
+            }
+        }
     },
     
     'Sorcerer': {
@@ -1201,14 +1341,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': -1
             }
         }
@@ -1351,14 +1491,14 @@ classes = {
         'Basic Attacks': {
             'Melee attack': {
                 'Target': 'One enemy',
-                'Attack': [['Str'], 'AC'],
-                'Hit': ['Weapon', ['Str']],
+                'Attack': ['Str'],
+                'Hit': ['Str'],
                 'Miss': -1
             },
             'Ranged attack': {
                 'Target': 'One enemy',
-                'Attack': [['Dex'], 'AC'],
-                'Hit': ['Weapon', ['Dex']],
+                'Attack': ['Dex'],
+                'Hit': ['Dex'],
                 'Miss': 0
             }
         }
