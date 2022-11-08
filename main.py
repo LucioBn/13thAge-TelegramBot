@@ -60,6 +60,7 @@ SHOW_BASIC_ATTACK_STATS = 0
 ITEM_DROPPED = 0
 WEAPON_IN_HAND = 0
 DIE_FACES, DICE_TO_ROLL = range(2)
+MODIFY_COMBAT_STATS, CHOSEN_COMBAT_STAT, NEW_COMBAT_STAT_VALUE = range(3)
 
 # start of /start
 
@@ -1064,6 +1065,20 @@ def assign_background_points(update: Update, context: CallbackContext) -> int:
     players[user.name]['Backgrounds'][chosen_backgrounds[user.name][len(chosen_backgrounds[user.name]) -1]] = int(update.message.text)
 
     if background_points[user.name] == 0:
+        players[user.name]["HP"] = None
+        update_hp_in_persons(user.name)
+        players[user.name]["AC"] = {}
+        players[user.name]["AC"]["None"] = None
+        players[user.name]["AC"]["Light"] = None
+        players[user.name]["AC"]["Heavy"] = None
+        update_ac_in_persons(user.name)
+        players[user.name]["PD"] = None
+        update_pd_in_persons(user.name)
+        players[user.name]["MD"] = None
+        update_md_in_persons(user.name)
+        players[user.name]["IB"] = None
+        update_initiative_bonus(user.name)
+
         write_players_json()
 
         update.message.reply_text(
@@ -1153,6 +1168,8 @@ def who(update: Update, context: CallbackContext) -> int:
             return "to know PC's weapon"
         if command == '/basic_attack_stats_gm':
             return "to know PC's basic attack stats"
+        if command == '/modify_combat_stats_gm':
+            return "to modify PC's combat stats"
 
     update.message.reply_text(
         f'Tap in a PC\'s name or write a player name {request(command)}.',
@@ -1183,6 +1200,8 @@ def who(update: Update, context: CallbackContext) -> int:
         return SHOW_WEAPON
     if command == '/basic_attack_stats_gm':
         return SHOW_BASIC_ATTACK_STATS
+    if command == '/modify_combat_stats_gm':
+        return MODIFY_COMBAT_STATS
 
 
 # /combat_stats
@@ -1199,14 +1218,6 @@ def show_combat_stats(update: Update, context: CallbackContext) -> int:
             return ConversationHandler.END
     else:
         nickname = user.name
-
-    update_hp_in_persons(nickname)
-    update_ac_in_persons(nickname)
-    update_pd_in_persons(nickname)
-    update_md_in_persons(nickname)
-    update_initiative_bonus(nickname)
-    
-    # write_players_dict()
 
     def message() -> str:
         """Create the message to send (only for combat_stats)."""
@@ -2565,7 +2576,7 @@ def show_basic_attack_stats(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
 
 
-# start /roll_die
+# start /dice_roller
 
 def dice_roller(update: Update, context: CallbackContext) -> int:
     """Asks how many faces the die has."""
@@ -2613,6 +2624,8 @@ def die_faces(update: Update, context: CallbackContext) -> int:
 def dice_to_roll(update: Update, context: CallbackContext) -> int:
     """Rolls the dice."""
 
+    global die_faces_var
+
     user = update.message.from_user
 
     if int(update.message.text) < 1:
@@ -2645,7 +2658,177 @@ def dice_to_roll(update: Update, context: CallbackContext) -> int:
 
         count += 1
 
+    die_faces_var = 0
+
     return ConversationHandler.END
+
+# end /dice_roller
+
+
+# start /modify_combat_stats_gm
+
+combat_stats_nickname = ''
+
+def modify_combat_stats(update: Update, context: CallbackContext) -> int:
+    """Asks which combat stats the GM wants to modify."""
+
+    user = update.message.text
+
+    global combat_stats_nickname
+    combat_stats_nickname = who_nickname(update.message.text, update)
+
+    reply_keyboard = [
+        ['HP'],
+        ['AC'],
+        ['PD'],
+        ['MD'],
+        ['IB']
+    ]
+
+    update.message.reply_text(
+        "Tap in the combat stats of " + players[combat_stats_nickname]["PC's name"] + " that you want to modify.",
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the combat stat.'
+        )
+    )
+   
+    return CHOSEN_COMBAT_STAT
+
+
+chosen_combat_stat_var: str
+ac = False
+
+
+def chosen_combat_stat(update: Update, context: CallbackContext) -> int:
+    """Stores the chosen combat stats and asks for the new value."""
+
+    global ac
+    global chosen_combat_stat_var
+
+    user = update.message.text
+
+    chosen_combat_stat_var = update.message.text
+
+    if not ac and (chosen_combat_stat_var == 'None' or chosen_combat_stat_var == 'Light' or chosen_combat_stat_var == 'Heavy'):
+        reply_keyboard = [
+            ['HP'],
+            ['AC'],
+            ['PD'],
+            ['MD'],
+            ['IB']
+        ]
+
+        update.message.reply_text(
+            "No combat stat named " + update.message.text + ".\n"
+            "Tap in the combat stats of " + players[combat_stats_nickname]["PC's name"] + " that you want to modify.",
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the combat stat.'
+            )
+        )
+    
+        return CHOSEN_COMBAT_STAT
+
+    if chosen_combat_stat_var == 'AC':
+        ac = True
+
+        reply_keyboard = [
+            ['None'],
+            ['Light'],
+            ['Heavy']
+        ]
+
+        update.message.reply_text(
+            "Tap in the AC category that you want to modify.",
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the AC category.'
+            )
+        )
+
+        return CHOSEN_COMBAT_STAT
+
+    if ac:
+        update.message.reply_text(
+            "The actual value of " + players[combat_stats_nickname]["PC's name"] + "'s " + chosen_combat_stat_var + " is " + str(players[combat_stats_nickname]['AC'][chosen_combat_stat_var]) + ".\n"
+            "Send the new value.",
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return NEW_COMBAT_STAT_VALUE
+        
+    update.message.reply_text(
+        "The actual value of " + players[combat_stats_nickname]["PC's name"] + "'s " + chosen_combat_stat_var + " is " + str(players[combat_stats_nickname][chosen_combat_stat_var]) + ".\n"
+        "Send the new value.",
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return NEW_COMBAT_STAT_VALUE
+
+
+def new_combat_stat_value(update: Update, context: CallbackContext) -> int:
+    """Stores the new value of the chosen combat stat."""
+
+    global players
+    global combat_stats_nickname, chosen_combat_stat_var, ac
+
+    user = update.message.from_user
+
+    if int(update.message.text) < 0:
+        update.message.reply_text(
+            "The value must be more or equal than 0.\n"
+            "Send the new value.",
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return NEW_COMBAT_STAT_VALUE
+    
+    if chosen_combat_stat_var == 'HP' and int(update.message.text) == 0:
+        send_to_all(update, context, players[combat_stats_nickname]["PC's name"] + " is dead cause their HP value is 0.")
+
+        context.bot.send_message(chat_id = chats[combat_stats_nickname]['id'], text = 'Your PC is dead. If you want to create a new PC send /join_game.')
+
+        del players[combat_stats_nickname]
+
+        combat_stats_nickname = ''
+        chosen_combat_stat_var = ''
+
+        write_players_json()
+
+        return ConversationHandler.END
+
+    if ac:
+        players[combat_stats_nickname]['AC'][chosen_combat_stat_var] = int(update.message.text)
+        write_players_json()
+
+        update.message.reply_text(
+            "New AC (" + chosen_combat_stat_var + ") is setted for " + players[combat_stats_nickname]["PC's name"] + ".",
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        context.bot.send_message(chat_id = chats[combat_stats_nickname]['id'], text = 'GM ha setted your AC (' + chosen_combat_stat_var + ') at the new value of ' + update.message.text + '.')
+
+        combat_stats_nickname = ''
+        chosen_combat_stat_var = ''
+        ac = False
+
+        return ConversationHandler.END
+
+    players[combat_stats_nickname][chosen_combat_stat_var] = int(update.message.text)
+    write_players_json()
+
+    update.message.reply_text(
+        "New " + chosen_combat_stat_var + " is setted for " + players[combat_stats_nickname]["PC's name"] + ".",
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    context.bot.send_message(chat_id = chats[combat_stats_nickname]['id'], text = 'GM ha setted your ' + chosen_combat_stat_var + ' at the new value of ' + update.message.text + '.')
+
+    combat_stats_nickname = ''
+    chosen_combat_stat_var = ''
+
+    return ConversationHandler.END
+
+
+# end /modify_combat_stats_gm
 
 
 # /cancel
@@ -2666,12 +2849,22 @@ def cancel(update: Update, context: CallbackContext) -> int:
 def reset(update: Update, context: CallbackContext) -> int:
     """Resets the game."""
 
+    user = update.message.from_user
+
+    if not is_the_gm(user.name):
+        update.message.reply_text(
+            'Only the GM can reset the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )    
+
+        return ConversationHandler.END
+
     global players
     players = {}
 
     write_players_json()
 
-    send_to_all(update, context, 'The game has been reset.')
+    send_to_all(update, context, 'The game has been reset. Press /join_game to take part to a new match.')
 
     return ConversationHandler.END
 
@@ -2750,6 +2943,20 @@ def auto_set_pc(update: Update, context: CallbackContext) -> int:
     players[user.name]["Backgrounds"]["Mercenary Captain"] = 3
     players[user.name]["Backgrounds"]["Shieldwall Spearman"] = 1
 
+    players[user.name]["HP"] = None
+    update_hp_in_persons(user.name)
+    players[user.name]["AC"] = {}
+    players[user.name]["AC"]["None"] = None
+    players[user.name]["AC"]["Light"] = None
+    players[user.name]["AC"]["Heavy"] = None
+    update_ac_in_persons(user.name)
+    players[user.name]["PD"] = None
+    update_pd_in_persons(user.name)
+    players[user.name]["MD"] = None
+    update_md_in_persons(user.name)
+    players[user.name]["IB"] = None
+    update_initiative_bonus(user.name)
+
     write_players_json()
 
     return ConversationHandler.END
@@ -2774,7 +2981,7 @@ def auto_set_game(update: Update, context: CallbackContext) -> int:
     inventory_size = 5
     beginning_pp = 0
     beginning_gp = 0
-    beginning_sp = 1
+    beginning_sp = 2
     beginning_cp = 0
 
     return ConversationHandler.END
@@ -2882,7 +3089,7 @@ def update_players_dict(username, key, value) -> None:
 
 
 def get_class_level(username) -> int:
-    return players[username]['Class level']
+    return players[username]['Level']
 
 
 def get_mid_value(list: list) -> int:
@@ -3321,6 +3528,16 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    modify_combat_stats_gm_handler = ConversationHandler(
+        entry_points = [CommandHandler('modify_combat_stats_gm', who)],
+        states = {
+            MODIFY_COMBAT_STATS: [MessageHandler(Filters.text & (~ Filters.command), modify_combat_stats)],
+            CHOSEN_COMBAT_STAT: [MessageHandler(Filters.regex('^(HP|AC|PD|MD|IB|None|Light|Heavy)$') & (~ Filters.command), chosen_combat_stat)],
+            NEW_COMBAT_STAT_VALUE: [MessageHandler(Filters.text & (~ Filters.command), new_combat_stat_value)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
@@ -3355,6 +3572,7 @@ def main() -> None:
     dispatcher.add_handler(drop_from_inventory_handler)
     dispatcher.add_handler(weapon_from_inventory_handler)
     dispatcher.add_handler(dice_roller_handler)
+    dispatcher.add_handler(modify_combat_stats_gm_handler)
     dispatcher.add_handler(CommandHandler("auto_set_game", auto_set_game))
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
