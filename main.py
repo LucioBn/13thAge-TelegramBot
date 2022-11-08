@@ -467,8 +467,6 @@ def set_pc(update: Update, context: CallbackContext) -> int:
 
         return ConversationHandler.END
 
-    # write_players_dict()
-
     global num_of_players
     num_of_players += 1
 
@@ -2884,6 +2882,14 @@ def auto_set_pc(update: Update, context: CallbackContext) -> int:
 
         return ConversationHandler.END
 
+    if not game_has_been_set:
+        update.message.reply_text(
+            'The game has not been set. Ask the GM to set it.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
     global num_of_players
     num_of_players += 1
 
@@ -2983,6 +2989,9 @@ def auto_set_game(update: Update, context: CallbackContext) -> int:
     beginning_gp = 0
     beginning_sp = 2
     beginning_cp = 0
+
+    global game_has_been_set
+    game_has_been_set = True
 
     return ConversationHandler.END
 
