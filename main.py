@@ -19,6 +19,7 @@ import abilities
 import icons
 import expansions
 import market
+import monsters
 
 import json
 
@@ -61,6 +62,9 @@ ITEM_DROPPED = 0
 WEAPON_IN_HAND = 0
 DIE_FACES, DICE_TO_ROLL = range(2)
 MODIFY_COMBAT_STATS, CHOSEN_COMBAT_STAT, NEW_COMBAT_STAT_VALUE = range(3)
+GROUP_OF_MONSTERS, MONSTER_ALIVE = range(2)
+MONSTER_STATS = 0
+MODIFY_SELECTED_MONSTER, CHOSEN_MONSTER_STAT, NEW_MONSTER_STAT_VALUE = range(3)
 
 # start of /start
 
@@ -2123,7 +2127,6 @@ def dc_used_to_test(update: Update, context: CallbackContext) -> int:
     return ConversationHandler.END
     
 
-
 def calculate_skill_check(update: Update, context: CallbackContext) -> int:
     """Calculate if the PC passed the test."""
 
@@ -2239,6 +2242,7 @@ def pc_background_to_test(update: Update, context: CallbackContext) -> int:
 
 
 nick_4_level = ''
+
 
 def pc_to_change_level_to(update: Update, context: CallbackContext) -> int:
     """Stores the PC's name and asks if the GM wants to upgrade or downgrade the level of the chosen PC."""
@@ -2663,6 +2667,222 @@ def dice_to_roll(update: Update, context: CallbackContext) -> int:
 # end /dice_roller
 
 
+# start /activate_monster
+
+def activate_monster(update: Update, context: CallbackContext) -> int:
+    """Useful for the GM for activate a monster."""
+
+    user = update.message.from_user
+
+    if not is_the_gm(user.name):
+        update.message.reply_text(
+            'Only the GM can reset the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )    
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for monster in monsters.monsters:
+        reply_keyboard.append([monster])
+
+    update.message.reply_text(
+        'Tap in the group of monster or the monster that you want to create.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the group/monster.'
+        )
+    )
+
+    return GROUP_OF_MONSTERS
+
+
+monster_group = ''
+
+
+def group_of_monsters(update: Update, context: CallbackContext) -> int:
+    """Checks if is a monster or a group of monsters."""
+
+    user = update.message.from_user
+
+    if monsters.monsters[update.message.text]["Monster"] == True:
+        reply_keyboard = [
+            ['Ok']
+        ]
+
+        update.message.reply_text(
+            'Tap in Ok to continue.\n'
+            'You have activated a monster (' + update.message.text + ').',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in Ok.'
+            )
+        )
+
+        global players
+        if "Monsters" not in players.keys():
+            players["Monsters"] = {}
+        players["Monsters"][update.message.text] = {}
+        players["Monsters"][update.message.text] = monsters.monsters[update.message.text]
+        write_players_json()
+
+        return MONSTER_ALIVE
+
+    global monster_group
+    monster_group = update.message.text
+
+    for key in monsters.monsters[monster_group].keys():
+        if "Dire features" in key or "Random" in key:
+            update.message.reply_text(
+                str(key) + '\n',
+                reply_markup = ReplyKeyboardRemove()
+            )
+            for key2 in monsters.monsters[monster_group][key].keys():
+                update.message.reply_text(
+                    str(key2) + ' -> ' + str(monsters.monsters[monster_group][key][key2]) + '\n',
+                    reply_markup = ReplyKeyboardRemove()
+                )
+
+    reply_keyboard = []
+    for monster in monsters.monsters[monster_group].keys():
+        if monster != 'Monster':
+            if "Dire features" not in monster and "Random" not in monster:
+                reply_keyboard.append([monster])
+
+    update.message.reply_text(
+        'Tap in the monster that you want to create.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the monster.'
+        )
+    )
+
+    return MONSTER_ALIVE
+
+def monster_alive(update: Update, context: CallbackContext) -> int:
+    """Stores the selected monster."""
+
+    user = update.message.from_user
+
+    global monster_group
+    global players
+    if "Monsters" not in players.keys():
+        players["Monsters"] = {}
+
+    if monster_group != '':
+        if update.message.text not in monsters.monsters[monster_group]:
+            reply_keyboard = []
+            for monster in monsters.monsters[monster_group].keys():
+                if monster != 'Monster':
+                    if "Dire features" not in monster and "Random" not in monster:
+                        reply_keyboard.append([monster])
+
+            update.message.reply_text(
+                'No monster is called ' + update.message.text + '.\n' + 'Tap in the monster that you want to create.',
+                reply_markup = ReplyKeyboardMarkup(
+                    reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the monster.'
+                )
+            )
+
+            return MONSTER_ALIVE
+
+        players["Monsters"][update.message.text] = {}
+        players["Monsters"][update.message.text] = monsters.monsters[monster_group][update.message.text]
+        write_players_json()
+
+        update.message.reply_text(
+            'Monster (' + update.message.text + ') added.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        monster_group = ''
+
+        return ConversationHandler.END
+
+    update.message.reply_text(
+        'Monster added.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    monster_group = ''
+
+    return ConversationHandler.END
+
+# end /activate_monster
+
+
+# start /monsters
+
+def show_monsters(update: Update, context: CallbackContext) -> int:
+    """Asks of which monster the user wants to see the stats."""
+
+    user = update.message.from_user
+
+    if "Monsters" not in players.keys():
+        update.message.reply_text(
+            'No monsters alive.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    reply_keyboard = []
+    for monster in players['Monsters'].keys():
+        reply_keyboard.append([monster])
+
+    if len(reply_keyboard) == 0:
+        update.message.reply_text(
+            'No monsters alive.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    update.message.reply_text(
+        'Tap in the moster you want to see the stats about.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the monster.'
+        )
+    )
+
+    return MONSTER_STATS
+
+
+def monster_stats(update: Update, context: CallbackContext) -> int:
+    """Shows the stats of the chosen monster."""
+
+    user = update.message.from_user
+
+    if update.message.text not in players['Monsters'].keys():
+        reply_keyboard = []
+        for monster in players['Monsters'].keys():
+            reply_keyboard.append([monster])
+        
+        update.message.reply_text(
+            'Tap in the moster you want to see the stats about.',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the monster.'
+            )
+        )
+
+        return MONSTER_STATS
+    
+    def message():
+        s = ''
+        s += update.message.text + '\n'
+        for key in players['Monsters'][update.message.text].keys():
+            if key != 'Monster':
+                s += key + ' -> ' + str(players['Monsters'][update.message.text][key]) + '\n'
+
+        return s
+    
+    update.message.reply_text(
+        message(),
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return ConversationHandler.END
+
+# end /monsters
+
+
 # start /modify_combat_stats_gm
 
 combat_stats_nickname = ''
@@ -2828,6 +3048,172 @@ def new_combat_stat_value(update: Update, context: CallbackContext) -> int:
 
 # end /modify_combat_stats_gm
 
+
+# start /modify_monster_stats_gm
+
+def modify_monster_stats(update: Update, context: CallbackContext) -> int:
+    """Asks to select the monster that the gm wants to modify the stats."""
+
+    user = update.message.from_user
+
+    if not is_the_gm(user.name):
+        update.message.reply_text(
+            'Only the GM can reset the game.',
+            reply_markup = ReplyKeyboardRemove()
+        )    
+
+        return ConversationHandler.END
+
+    if "Monsters" not in players.keys():
+        update.message.reply_text(
+            'No monsters alive.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+    
+    reply_keyboard = []
+    for monster in players['Monsters'].keys():
+        reply_keyboard.append([monster])
+
+    if len(reply_keyboard) == 0:
+        update.message.reply_text(
+            'No monsters alive.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return ConversationHandler.END
+
+    update.message.reply_text(
+        'Tap in the moster you want to modify the stats about.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the monster.'
+        )
+    )
+
+    return MODIFY_SELECTED_MONSTER
+
+
+monster_selected = ''
+
+
+def modify_selected_monster(update: Update, context: CallbackContext) -> int:
+    """Store the selected monster and asks which stat the gm wants to modify."""
+
+    user = update.message.from_user
+
+    global monster_selected
+    try:
+        monster_selected = update.message.text
+
+        if monster_selected not in players['Monsters'].keys():
+            raise Exception()
+    except Exception as error:
+        reply_keyboard = []
+        for monster in players['Monsters'].keys():
+            reply_keyboard.append([monster])
+
+        update.message.reply_text(
+            'No monster called ' + monster_selected + '.\n' + 'Tap in the moster you want to modify the stats about.',
+            reply_markup = ReplyKeyboardMarkup(
+                reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the monster.'
+            )
+        )
+
+        return MODIFY_SELECTED_MONSTER
+    
+    reply_keyboard = [
+        ['Level'],
+        ['IB'],
+        ['AC'],
+        ['PD'],
+        ['MD'],
+        ['HP'] 
+    ]
+
+    update.message.reply_text(
+        'Tap in the stat you want to modify.',
+        reply_markup = ReplyKeyboardMarkup(
+            reply_keyboard, one_time_keyboard = True, resize_keyboard = True, input_field_placeholder = 'Tap in the monster.'
+        )
+    )
+
+    return CHOSEN_MONSTER_STAT
+
+
+monster_stat = ''
+
+
+def chosen_monster_stat(update: Update, context: CallbackContext) -> int:
+    """Stores the chosen monster stat and asks the new value."""
+
+    user = update.message.from_user
+    
+    global monster_stat
+    monster_stat = update.message.text
+
+    update.message.reply_text(
+        'Send the new value of ' + monster_stat + ' for ' + monster_selected + ' (actual ' + str(players['Monsters'][monster_selected][monster_stat]) + ').',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    return NEW_MONSTER_STAT_VALUE
+
+
+def new_monster_stat_value(update: Update, context: CallbackContext) -> int:
+    """Saves the new value for the chosen stat."""
+
+    global players, monster_selected, monster_stat
+
+    user = update.message.from_user
+
+    try:
+        new_value = int(update.message.text)
+
+        if new_value < 0:
+            raise Exception()
+    except ValueError:
+        update.message.reply_text(
+            'Need to be a number.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return NEW_MONSTER_STAT_VALUE
+    except Exception as error:
+        update.message.reply_text(
+            'Need to be a more or equal than 0.',
+            reply_markup = ReplyKeyboardRemove()
+        )
+
+        return NEW_MONSTER_STAT_VALUE
+    
+    if monster_stat == 'HP' and new_value == 0:
+        send_to_all(update, context, monster_selected + " is dead cause their HP value is 0.")
+
+        del players['Monsters'][monster_selected]
+
+        monster_selected = ''
+        monster_stat = ''
+
+        write_players_json()
+
+        return ConversationHandler.END
+
+    players['Monsters'][monster_selected][monster_stat] = new_value
+
+    write_players_json()
+
+    update.message.reply_text(
+        monster_selected + "'s " + monster_stat + ' new value is ' + str(players['Monsters'][monster_selected][monster_stat]) + '.',
+        reply_markup = ReplyKeyboardRemove()
+    )
+
+    monster_selected = ''
+    monster_stat = ''
+
+    return ConversationHandler.END
+
+# end /modify_monster_stats_gm
 
 # /cancel
 
@@ -3547,7 +3933,34 @@ def main() -> None:
         },
         fallbacks = [CommandHandler('cancel', cancel)]
     )
+    
+    activate_new_monster_gm_handler = ConversationHandler(
+        entry_points = [CommandHandler('activate_new_monster_gm', activate_monster)],
+        states = {
+            GROUP_OF_MONSTERS: [MessageHandler(Filters.regex(accettable_elements(monsters.monsters)) & (~ Filters.command), group_of_monsters)],
+            MONSTER_ALIVE: [MessageHandler(Filters.text & (~ Filters.command), monster_alive)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+    
+    show_monster_stats_handler = ConversationHandler(
+        entry_points = [CommandHandler('monsters', show_monsters)],
+        states = {
+            MONSTER_STATS: [MessageHandler(Filters.text & (~ Filters.command), monster_stats)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
 
+    modify_monster_stats_gm_handler = ConversationHandler(
+        entry_points = [CommandHandler('modify_monster_stats_gm', modify_monster_stats)],
+        states = {
+            MODIFY_SELECTED_MONSTER: [MessageHandler(Filters.text & (~ Filters.command), modify_selected_monster)],
+            CHOSEN_MONSTER_STAT: [MessageHandler(Filters.regex('^(HP|AC|PD|MD|IB|Level)$') & (~ Filters.command), chosen_monster_stat)],
+            NEW_MONSTER_STAT_VALUE: [MessageHandler(Filters.text & (~ Filters.command), new_monster_stat_value)]
+        },
+        fallbacks = [CommandHandler('cancel', cancel)]
+    )
+    
     dispatcher.add_handler(CommandHandler("start", start))
     dispatcher.add_handler(join_game_handler)
     dispatcher.add_handler(set_game_handler)
@@ -3582,6 +3995,9 @@ def main() -> None:
     dispatcher.add_handler(weapon_from_inventory_handler)
     dispatcher.add_handler(dice_roller_handler)
     dispatcher.add_handler(modify_combat_stats_gm_handler)
+    dispatcher.add_handler(activate_new_monster_gm_handler)
+    dispatcher.add_handler(show_monster_stats_handler)
+    dispatcher.add_handler(modify_monster_stats_gm_handler)
     dispatcher.add_handler(CommandHandler("auto_set_game", auto_set_game))
     dispatcher.add_handler(CommandHandler("auto_set_pc", auto_set_pc))
     dispatcher.add_handler(CommandHandler("reset", reset))
