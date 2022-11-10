@@ -2869,7 +2869,12 @@ def monster_stats(update: Update, context: CallbackContext) -> int:
         s += update.message.text + '\n'
         for key in players['Monsters'][update.message.text].keys():
             if key != 'Monster':
-                s += key + ' -> ' + str(players['Monsters'][update.message.text][key]) + '\n'
+                if key == 'Attack':
+                    s += 'Attack:\n'
+                    for attack in players['Monsters'][update.message.text]['Attack'].keys():
+                        s += '- ' + attack + ' -> ' + players['Monsters'][update.message.text]['Attack'][attack] + '\n'
+                else:
+                    s += key + ' -> ' + str(players['Monsters'][update.message.text][key]) + '\n'
 
         return s
     
