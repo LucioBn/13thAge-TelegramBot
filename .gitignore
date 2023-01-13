@@ -1,5 +1,6 @@
 useful_only_for_me/
 report/
 __pycache__/
+.vscode/
 
 players.json
