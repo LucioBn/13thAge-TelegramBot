@@ -1,1 +1,0 @@
-abilities = ['Strenght', 'Constitution', 'Dexterity', 'Intelligence', 'Wisdom', 'Charisma']
